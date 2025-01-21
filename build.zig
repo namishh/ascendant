@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) !void {
 
     //web exports are completely separate
     if (target.query.os_tag == .emscripten) {
-        const exe_lib = try rlz.emcc.compileForEmscripten(b, "'game'", "src/main.zig", target, optimize);
+        const exe_lib = try rlz.emcc.compileForEmscripten(b, "'ascendant'", "src/main.zig", target, optimize);
 
         exe_lib.linkLibrary(raylib_artifact);
         exe_lib.root_module.addImport("raylib", raylib);
@@ -29,18 +29,18 @@ pub fn build(b: *std.Build) !void {
         b.getInstallStep().dependOn(&link_step.step);
         const run_step = try rlz.emcc.emscriptenRunStep(b);
         run_step.step.dependOn(&link_step.step);
-        const run_option = b.step("run", "Run 'game'");
+        const run_option = b.step("run", "Run 'ascendant'");
         run_option.dependOn(&run_step.step);
         return;
     }
 
-    const exe = b.addExecutable(.{ .name = "game", .root_source_file = b.path("src/main.zig"), .optimize = optimize, .target = target });
+    const exe = b.addExecutable(.{ .name = "ascendant", .root_source_file = b.path("src/main.zig"), .optimize = optimize, .target = target });
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
 
     const run_cmd = b.addRunArtifact(exe);
-    const run_step = b.step("run", "Run 'game'");
+    const run_step = b.step("run", "Run 'ascendant'");
     run_step.dependOn(&run_cmd.step);
 
     b.installArtifact(exe);

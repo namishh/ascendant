@@ -5,11 +5,11 @@ pub fn main() anyerror!void {
     const screenWidth = 1000;
     const screenHeight = 650;
 
-    rl.initWindow(screenWidth, screenHeight, "gayming");
+    rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow(); // Close window and OpenGL context
 
-    const vsPath = "src/shaders/zigzag.vs";
-    const fsPath = "src/shaders/zigzag.fs";
+    const vsPath = "src/shaders/lines.vs";
+    const fsPath = "src/shaders/lines.fs";
 
     const shdrZigzag: rl.Shader = try rl.loadShader(vsPath, fsPath);
     defer rl.unloadShader(shdrZigzag);

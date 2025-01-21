@@ -14,14 +14,9 @@ uniform float time;                                 // Time in seconds
 void main()
 {
     float angle = radians(45.0);
-    
     vec2 scaledCoord = fragTexCoord * 350.0;
-    
     scaledCoord.y += time * 1.0;
-    
     float rotatedCoord = scaledCoord.x * cos(angle) - scaledCoord.y * sin(angle);
-    
     float pattern = mod(rotatedCoord, 2.0);
-    
     finalColor = pattern < 1.0 ? colOne : colTwo;
 }
