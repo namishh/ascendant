@@ -59,8 +59,6 @@ pub fn main() anyerror!void {
             rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.white);
         }
 
-        rl.drawText("Shader-based\nzigzag effect", 10, 10, 20, rl.Color.gray);
-
         rl.drawFPS(910, 10);
     }
 }
