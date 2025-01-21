@@ -38,7 +38,6 @@ pub fn build(b: *std.Build) !void {
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
-
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run 'ascendant'");
     run_step.dependOn(&run_cmd.step);
