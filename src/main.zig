@@ -1,16 +1,62 @@
 const rl = @import("raylib");
 const std = @import("std");
 const PlayingCard = @import("playingcard.zig").PlayingCard;
+const Deck = @import("deck.zig").Deck;
+const Hand = @import("hand.zig").Hand;
+
+const GameState = struct {
+    deck: Deck,
+    hand: Hand,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) !GameState {
+        var deck = try Deck.init(allocator, 400, 250);
+        deck.shuffle();
+
+        var hand = Hand.init(allocator, 50, 400);
+        try hand.drawRandomHand(&deck);
+
+        return GameState{
+            .deck = deck,
+            .hand = hand,
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *GameState) void {
+        self.deck.deinit();
+        self.hand.deinit();
+    }
+
+    pub fn update(self: *GameState) !void {
+        self.hand.update();
+
+        if (rl.isKeyPressed(.space)) {
+            try self.hand.drawRandomHand(&self.deck);
+        }
+    }
+
+    pub fn draw(self: *GameState) void {
+        self.deck.draw();
+        self.hand.draw();
+    }
+};
 
 pub fn main() anyerror!void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
     const screenWidth = 1000;
     const screenHeight = 650;
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow();
+
     const vsPath = "src/shaders/lines.vs";
     const fsPath = "src/shaders/lines.fs";
     const shdrZigzag: rl.Shader = try rl.loadShader(vsPath, fsPath);
     defer rl.unloadShader(shdrZigzag);
+
     var time: f32 = 0.0;
     const screenSize = rl.Vector2.init(
         @as(f32, @floatFromInt(screenWidth)),
@@ -19,59 +65,35 @@ pub fn main() anyerror!void {
     const timeLoc = rl.getShaderLocation(shdrZigzag, "time");
     const screenSizeLoc = rl.getShaderLocation(shdrZigzag, "resolution");
 
-    rl.setShaderValue(
-        shdrZigzag,
-        timeLoc,
-        &time,
-        .float,
-    );
-    rl.setShaderValue(
-        shdrZigzag,
-        screenSizeLoc,
-        &screenSize,
-        .vec2,
-    );
+    rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
+    rl.setShaderValue(shdrZigzag, screenSizeLoc, &screenSize, .vec2);
 
     try PlayingCard.initResources();
     defer PlayingCard.deinitResources();
 
-    // Create a sample playing card
-    var card = PlayingCard.init("A", "spades", 450, 250);
-    var card2 = PlayingCard.init("10", "diamonds", 300, 250);
-    var card3 = PlayingCard.init("5", "clubs", 150, 250);
-    var card4 = PlayingCard.init("k", "hearts", 600, 250);
-    var card5 = PlayingCard.init("J", "2", 750, 250);
+    // Initialize game state
+    var game_state = try GameState.init(allocator);
+    defer game_state.deinit();
 
     rl.setTargetFPS(60);
+
     while (!rl.windowShouldClose()) {
         time += rl.getFrameTime();
-        rl.setShaderValue(
-            shdrZigzag,
-            timeLoc,
-            &time,
-            .float,
-        );
+        rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
+        try game_state.update();
 
         rl.beginDrawing();
         defer rl.endDrawing();
 
-        card.update();
-        card2.update();
-        card3.update();
-        card4.update();
-        card5.update();
-
         rl.clearBackground(rl.Color.ray_white);
+
         {
             rl.beginShaderMode(shdrZigzag);
             defer rl.endShaderMode();
             rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.white);
         }
-        card.draw();
-        card2.draw();
-        card3.draw();
-        card4.draw();
-        card5.draw();
+
+        game_state.draw();
 
         rl.drawFPS(910, 10);
     }

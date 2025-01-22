@@ -135,7 +135,7 @@ pub const PlayingCard = struct {
             mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
             mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
 
-        // Update flip animation
+        // Update flip animation with easing
         const flip_speed: f32 = 4.0;
         if (self.is_hovered) {
             self.flip_progress = @min(1.0, self.flip_progress + rl.getFrameTime() * flip_speed);
@@ -150,21 +150,38 @@ pub const PlayingCard = struct {
             return;
         }
 
-        // Calculate scale based on flip progress
-        const scale = @cos(self.flip_progress * std.math.pi);
-        const scaled_width = @as(i32, @intFromFloat(@as(f32, @floatFromInt(self.width)) * @abs(scale)));
+        // Calculate rotation and perspective effects
+        const flip_angle = self.flip_progress * std.math.pi;
+        const perspective_scale = 0.3;
+
+        // Calculate width scale based on rotation
+        const width_scale = @cos(flip_angle);
+        const scaled_width = @as(i32, @intFromFloat(@as(f32, @floatFromInt(self.width)) * @abs(width_scale)));
         const x_offset = @divTrunc(self.width - scaled_width, 2);
 
-        if (scale > 0) {
-            self.drawFront(x_offset);
+        const vertical_offset = @as(i32, @intFromFloat(@sin(flip_angle) * perspective_scale * @as(f32, @floatFromInt(self.height))));
+
+        const shadow_alpha = @as(u8, @intFromFloat(64.0 * (1.0 - @abs(@cos(flip_angle)))));
+        const shadow_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = shadow_alpha };
+
+        if (width_scale > 0) {
+            rl.drawRectangle(self.x + x_offset + 4, self.y + 4 + vertical_offset, scaled_width, self.height, shadow_color);
+            self.drawFront(x_offset, vertical_offset);
+
+            const highlight_alpha = @as(u8, @intFromFloat(128.0 * (1.0 - @cos(flip_angle))));
+            const highlight_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = highlight_alpha };
+            rl.drawRectangle(self.x + x_offset, self.y + vertical_offset, scaled_width, self.height, highlight_color);
         } else {
-            self.drawBack(x_offset);
+            rl.drawRectangle(self.x + x_offset + 4, self.y + 4 - vertical_offset, scaled_width, self.height, shadow_color);
+            self.drawBack(x_offset, -vertical_offset);
+            const highlight_alpha = @as(u8, @intFromFloat(128.0 * (1.0 + @cos(flip_angle))));
+            const highlight_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = highlight_alpha };
+            rl.drawRectangle(self.x + x_offset, self.y - vertical_offset, scaled_width, self.height, highlight_color);
         }
     }
 
-    fn drawFront(self: PlayingCard, x_offset: i32) void {
-        rl.drawRectangle(self.x + x_offset, self.y, self.width - x_offset * 2, self.height, rl.Color.white);
-        rl.drawRectangleLines(self.x + x_offset, self.y, self.width - x_offset * 2, self.height, rl.Color.black);
+    fn drawFront(self: PlayingCard, x_offset: i32, y_offset: i32) void {
+        rl.drawRectangle(self.x + x_offset, self.y + y_offset, self.width - x_offset * 2, self.height, rl.Color.white);
 
         if (isJoker(self.value)) {
             if (joker_textures.?.get(self.suit)) |texture| {
@@ -281,7 +298,7 @@ pub const PlayingCard = struct {
         }
     }
 
-    fn drawBack(self: PlayingCard, x_offset: i32) void {
+    fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32) void {
         const texture = card_back_texture.?;
         const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
         const maxHeight = @as(f32, @floatFromInt(self.height - 10));
@@ -298,7 +315,7 @@ pub const PlayingCard = struct {
         const imageX = self.x + x_offset + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.width - x_offset * 2)) - scaledWidth) / 2));
         const imageY = self.y + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.height)) - scaledHeight) / 2));
 
-        rl.drawRectangle(self.x + x_offset, self.y, self.width - x_offset * 2, self.height, rl.Color{ .r = 245, .g = 242, .b = 237, .a = 255 });
+        rl.drawRectangle(self.x + x_offset, self.y + y_offset, self.width - x_offset * 2, self.height, rl.Color{ .r = 245, .g = 242, .b = 237, .a = 255 });
         rl.drawTextureEx(
             texture,
             rl.Vector2{ .x = @as(f32, @floatFromInt(imageX)), .y = @as(f32, @floatFromInt(imageY)) },
@@ -306,6 +323,5 @@ pub const PlayingCard = struct {
             scale,
             rl.Color.white,
         );
-        rl.drawRectangleLines(self.x + x_offset, self.y, self.width - x_offset * 2, self.height, rl.Color.black);
     }
 };
