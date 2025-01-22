@@ -10,10 +10,10 @@ const GameState = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
-        var deck = try Deck.init(allocator, 400, 250);
+        var deck = try Deck.init(allocator);
         deck.shuffle();
 
-        var hand = Hand.init(allocator, 50, 400);
+        var hand = Hand.init(allocator);
         try hand.drawRandomHand(&deck);
 
         return GameState{

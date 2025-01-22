@@ -8,7 +8,7 @@ pub const Deck = struct {
     x: i32,
     y: i32,
 
-    pub fn init(allocator: std.mem.Allocator, x: i32, y: i32) !Deck {
+    pub fn init(allocator: std.mem.Allocator) !Deck {
         var cards = std.ArrayList(PlayingCard).init(allocator);
         const used_cards = std.ArrayList(PlayingCard).init(allocator);
 
@@ -17,20 +17,19 @@ pub const Deck = struct {
 
         for (suits) |suit| {
             for (values) |value| {
-                try cards.append(PlayingCard.init(value, suit, x, // Use deck's x position
-                    y));
+                try cards.append(PlayingCard.init(value, suit, 300, 150));
             }
         }
 
         // Add jokers
-        try cards.append(PlayingCard.init("J", "1", x, y));
-        try cards.append(PlayingCard.init("J", "2", x, y));
+        try cards.append(PlayingCard.init("J", "1", 300, 150));
+        try cards.append(PlayingCard.init("J", "2", 300, 150));
 
         return Deck{
             .cards = cards,
             .used_cards = used_cards,
-            .x = x,
-            .y = y,
+            .x = @divTrunc(rl.getScreenWidth(), 2) - 50,
+            .y = @divTrunc(rl.getScreenHeight(), 2) - 60,
         };
     }
 
@@ -83,10 +82,11 @@ pub const Deck = struct {
     pub fn draw(self: Deck) void {
         const visible_cards = 5;
         const offset: i32 = 2;
+        std.debug.print("self.y - {}\nself.x - {}\n", .{ self.y, self.x });
 
         var i: usize = 0;
         while (i < visible_cards) : (i += 1) {
-            const card_y = self.y - @as(i32, @intCast(i)) * offset;
+            const card_y = self.y - @as(i32, @intCast(i)) + 10 * offset;
             var display_card = PlayingCard.init("", "", self.x, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0; // Show back of card
             display_card.draw();

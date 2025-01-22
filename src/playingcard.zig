@@ -7,9 +7,17 @@ pub const PlayingCard = struct {
     x: i32,
     y: i32,
     width: i32 = 100,
-    height: i32 = 125,
+    height: i32 = 120,
+    base_y: i32 = 0,
+    current_hover: f32 = 0.0,
+    target_hover: f32 = 0.0,
+    hover_speed: f32 = 0.2,
+
     is_hovered: bool = false,
-    flip_progress: f32 = 0.0, // 0.0 = front facing, 1.0 = back facing
+    hover_offset: f32 = 0.0,
+    flip_progress: f32 = 0.0,
+    flip_target: f32 = 0.0,
+    rotation: f32 = 0.0,
 
     var font: ?rl.Font = null;
     var suit_textures: ?std.StringHashMap(rl.Texture2D) = null;
@@ -122,45 +130,84 @@ pub const PlayingCard = struct {
             .suit = suit,
             .x = x,
             .y = y,
+            .base_y = y,
         };
     }
 
+    // pub fn update(self: *PlayingCard) void {
+    //     const mouse_pos = rl.getMousePosition();
+
+    //     // Check if mouse is over card
+    //     self.is_hovered = mouse_pos.x >= @as(f32, @floatFromInt(self.x)) and
+    //         mouse_pos.x <= @as(f32, @floatFromInt(self.x + self.width)) and
+    //         mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
+    //         mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
+
+    //     // Update flip target based on hover state
+    //     self.flip_target = if (self.is_hovered) 1.0 else 0.0;
+
+    //     // Smooth animation
+    //     const flip_speed = 0.05;
+    //     if (self.flip_progress < self.flip_target) {
+    //         self.flip_progress = @min(self.flip_progress + flip_speed, self.flip_target);
+    //     } else if (self.flip_progress > self.flip_target) {
+    //         self.flip_progress = @max(self.flip_progress - flip_speed, self.flip_target);
+    //     }
+    // }
     pub fn update(self: *PlayingCard) void {
-        std.debug.print("Updating card: {s} of {s}\n", .{ self.value, self.suit });
+        const mouse_pos = rl.getMousePosition();
+        self.is_hovered = mouse_pos.x >= @as(f32, @floatFromInt(self.x)) and
+            mouse_pos.x <= @as(f32, @floatFromInt(self.x + self.width)) and
+            mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
+            mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
+
+        // Update hover target based on hover state
+        self.target_hover = if (self.is_hovered) 1.0 else 0.0;
+
+        // Smooth transition
+        if (self.current_hover < self.target_hover) {
+            self.current_hover = @min(self.current_hover + self.hover_speed, self.target_hover);
+        } else if (self.current_hover > self.target_hover) {
+            self.current_hover = @max(self.current_hover - self.hover_speed, self.target_hover);
+        }
+
+        // Apply hover offset
+        self.y = self.base_y + @as(i32, @intFromFloat(self.current_hover * self.hover_offset));
     }
 
     pub fn draw(self: PlayingCard) void {
         const flip_angle = self.flip_progress * std.math.pi;
-        const perspective_scale = 0.25;
-        const shadow_intensity = 0.3;
+        const scale = @abs(@cos(flip_angle));
+        const current_width = @as(i32, @intFromFloat(@as(f32, @floatFromInt(self.width)) * scale));
+        const x_offset = @divTrunc(self.width - current_width, 2);
 
-        const width_scale = @abs(@cos(flip_angle));
-        const scaled_width = @as(i32, @intFromFloat(@as(f32, @floatFromInt(self.width)) * width_scale));
-        const vertical_offset = @as(i32, @intFromFloat(@sin(flip_angle) * perspective_scale * 50));
-        const x_offset = @divTrunc(self.width - scaled_width, 2);
+        // Draw shadow aligned with card
+        const shadow_alpha = @as(u8, @intFromFloat(100.0 * (1.0 - scale)));
+        rl.drawRectangle(
+            self.x + x_offset,
+            self.y,
+            current_width,
+            self.height,
+            rl.Color{ .r = 0, .g = 0, .b = 0, .a = shadow_alpha },
+        );
 
-        const shadow_alpha = @as(u8, @intFromFloat(80 * (1.0 - width_scale) + 50 * shadow_intensity));
-        const shadow_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = shadow_alpha };
-        rl.drawRectangle(self.x + x_offset + 5, self.y + 10 + @as(i32, @intCast(@abs(vertical_offset))), scaled_width, self.height, shadow_color);
-
-        if (width_scale > 0.1) {
-            const front_alpha = @as(u8, @intFromFloat(255 * (1.0 - self.flip_progress)));
-            rl.beginScissorMode(self.x + x_offset, self.y, scaled_width, self.height);
-            self.drawFront(x_offset, vertical_offset * @as(i32, @intFromFloat(1.0 - self.flip_progress)), front_alpha);
-            rl.endScissorMode();
+        if (self.flip_progress < 0.5) {
+            self.drawFront(x_offset, 0, 255);
+        } else {
+            self.drawBack(x_offset, 0, 255);
         }
 
-        if (self.flip_progress > 0.1) {
-            // Back face
-            const back_alpha = @as(u8, @intFromFloat(255 * self.flip_progress));
-            rl.beginScissorMode(self.x + x_offset, self.y, scaled_width, self.height);
-            self.drawBack(x_offset, vertical_offset * @as(i32, @intFromFloat(self.flip_progress)), back_alpha);
-            rl.endScissorMode();
+        if (self.is_hovered) {
+            const highlight_intensity = @abs(@sin(flip_angle));
+            const highlight_alpha = @as(u8, @intFromFloat(80.0 * highlight_intensity));
+            rl.drawRectangle(
+                self.x + x_offset,
+                self.y,
+                current_width,
+                self.height,
+                rl.Color{ .r = 255, .g = 255, .b = 255, .a = highlight_alpha },
+            );
         }
-
-        // Add specular highlight
-        const highlight_alpha = @as(u8, @intFromFloat(80 * @abs(@sin(flip_angle * 2))));
-        rl.drawRectangle(self.x + x_offset, self.y + vertical_offset, scaled_width, self.height, rl.Color{ .r = 255, .g = 255, .b = 255, .a = highlight_alpha });
     }
 
     fn drawFront(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
@@ -181,9 +228,6 @@ pub const PlayingCard = struct {
         rl.drawRectangle(x + current_width - border_size, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
 
         rl.drawRectangle(x + border_size, y + border_size, current_width - border_size * 2, current_height - border_size * 2, card_color);
-
-        rl.beginScissorMode(self.x + x_offset, self.y + y_offset, self.width - x_offset * 2, self.height);
-        defer rl.endScissorMode();
 
         if (isJoker(self.value)) {
             if (joker_textures.?.get(self.suit)) |texture| {
@@ -265,7 +309,6 @@ pub const PlayingCard = struct {
             const valueX = self.x + x_offset + 10;
             const valueY = self.y + 10;
             rl.drawTextEx(font.?, valueWithNull.ptr, rl.Vector2{ .x = @as(f32, @floatFromInt(valueX)), .y = @as(f32, @floatFromInt(valueY)) }, fontSize, 0, color);
-
             const valueXBottomRight = self.x + self.width - x_offset - @as(i32, @intFromFloat(valueWidth)) - 10;
             const valueYBottomRight = self.y + self.height - @as(i32, @intFromFloat(fontSize)) - 10;
             rl.drawTextPro(
@@ -300,7 +343,6 @@ pub const PlayingCard = struct {
         }
     }
 
-    // In the drawBack function, ensure scissor mode is applied:
     fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
         const texture = card_back_texture.?;
         const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
@@ -334,10 +376,6 @@ pub const PlayingCard = struct {
         rl.drawRectangle(x + current_width - border_size, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
 
         rl.drawRectangle(x + border_size, y + border_size, current_width - border_size * 2, current_height - border_size * 2, card_color);
-
-        rl.beginScissorMode(self.x + x_offset, self.y + y_offset, self.width - x_offset * 2, self.height);
-        defer rl.endScissorMode();
-
         rl.drawTextureEx(
             texture,
             rl.Vector2{ .x = @as(f32, @floatFromInt(imageX)), .y = @as(f32, @floatFromInt(imageY)) },
