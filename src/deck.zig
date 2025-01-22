@@ -82,7 +82,6 @@ pub const Deck = struct {
     pub fn draw(self: Deck) void {
         const visible_cards = 5;
         const offset: i32 = 2;
-        std.debug.print("self.y - {}\nself.x - {}\n", .{ self.y, self.x });
 
         var i: usize = 0;
         while (i < visible_cards) : (i += 1) {

@@ -18,6 +18,8 @@ pub const PlayingCard = struct {
     flip_progress: f32 = 0.0,
     flip_target: f32 = 0.0,
     rotation: f32 = 0.0,
+    borderSpace: i32 = 2,
+    borderColor: rl.Color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 255 },
 
     var font: ?rl.Font = null;
     var suit_textures: ?std.StringHashMap(rl.Texture2D) = null;
@@ -211,23 +213,43 @@ pub const PlayingCard = struct {
     }
 
     fn drawFront(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
-        const border_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = alpha };
+        //const border_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = alpha };
         const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
 
         const current_width = self.width - x_offset * 2;
         const current_height = self.height;
-        const border_size: i32 = 2;
-        const corner_cut: i32 = 3;
 
-        const x = self.x + x_offset;
-        const y = self.y + y_offset;
+        // Calculate center point for rotation
+        const center_x = @as(f32, @floatFromInt(self.x + x_offset + @divTrunc(current_width, 2)));
+        const center_y = @as(f32, @floatFromInt(self.y + y_offset + @divTrunc(current_height, 2)));
 
-        rl.drawRectangle(x + corner_cut, y, current_width - corner_cut * 2, border_size, border_color);
-        rl.drawRectangle(x + corner_cut, y + current_height - border_size, current_width - corner_cut * 2, border_size, border_color);
-        rl.drawRectangle(x, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
-        rl.drawRectangle(x + current_width - border_size, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
+        // Draw outer rectangle (border) with rotation
+        const outer_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width),
+            .height = @floatFromInt(current_height),
+        };
+        const outer_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width, 2)),
+            .y = @floatFromInt(@divTrunc(current_height, 2)),
+        };
 
-        rl.drawRectangle(x + border_size, y + border_size, current_width - border_size * 2, current_height - border_size * 2, card_color);
+        // Draw inner rectangle (card background) with rotation
+        const inner_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width - self.borderSpace * 2),
+            .height = @floatFromInt(current_height - self.borderSpace * 2),
+        };
+        const inner_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width - self.borderSpace * 2, 2)),
+            .y = @floatFromInt(@divTrunc(current_height - self.borderSpace * 2, 2)),
+        };
+
+        // Draw border and card background
+        rl.drawRectanglePro(outer_rect, outer_origin, self.rotation, self.borderColor);
+        rl.drawRectanglePro(inner_rect, inner_origin, self.rotation, card_color);
 
         if (isJoker(self.value)) {
             if (joker_textures.?.get(self.suit)) |texture| {
@@ -240,17 +262,31 @@ pub const PlayingCard = struct {
                 const scaleHeight = maxHeight / imageHeight;
                 const scale = @min(scaleWidth, scaleHeight);
 
-                const scaledWidth = imageWidth * scale;
-                const scaledHeight = imageHeight * scale;
+                const source_rect = rl.Rectangle{
+                    .x = 0,
+                    .y = 0,
+                    .width = imageWidth,
+                    .height = imageHeight,
+                };
 
-                const imageX = self.x + x_offset + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.width - x_offset * 2)) - scaledWidth) / 2));
-                const imageY = self.y + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.height)) - scaledHeight) / 2));
+                const dest_rect = rl.Rectangle{
+                    .x = center_x,
+                    .y = center_y,
+                    .width = imageWidth * scale,
+                    .height = imageHeight * scale,
+                };
 
-                rl.drawTextureEx(
+                const img_origin = rl.Vector2{
+                    .x = (imageWidth * scale) / 2,
+                    .y = (imageHeight * scale) / 2,
+                };
+
+                rl.drawTexturePro(
                     texture,
-                    rl.Vector2{ .x = @as(f32, @floatFromInt(imageX)), .y = @as(f32, @floatFromInt(imageY)) },
-                    0,
-                    scale,
+                    source_rect,
+                    dest_rect,
+                    img_origin,
+                    self.rotation,
                     rl.Color.white,
                 );
             }
@@ -276,17 +312,31 @@ pub const PlayingCard = struct {
                 const scaleHeight = maxHeight / imageHeight;
                 const scale = @min(scaleWidth, scaleHeight);
 
-                const scaledWidth = imageWidth * scale;
-                const scaledHeight = imageHeight * scale;
+                const source_rect = rl.Rectangle{
+                    .x = 0,
+                    .y = 0,
+                    .width = imageWidth,
+                    .height = imageHeight,
+                };
 
-                const imageX = self.x + x_offset + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.width - x_offset * 2)) - scaledWidth) / 2));
-                const imageY = self.y + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.height)) - scaledHeight) / 2));
+                const dest_rect = rl.Rectangle{
+                    .x = center_x,
+                    .y = center_y,
+                    .width = imageWidth * scale,
+                    .height = imageHeight * scale,
+                };
 
-                rl.drawTextureEx(
+                const img_origin = rl.Vector2{
+                    .x = (imageWidth * scale) / 2,
+                    .y = (imageHeight * scale) / 2,
+                };
+
+                rl.drawTexturePro(
                     texture,
-                    rl.Vector2{ .x = @as(f32, @floatFromInt(imageX)), .y = @as(f32, @floatFromInt(imageY)) },
-                    0,
-                    scale,
+                    source_rect,
+                    dest_rect,
+                    img_origin,
+                    self.rotation,
                     rl.Color.white,
                 );
             }
@@ -298,89 +348,156 @@ pub const PlayingCard = struct {
 
             const fontSize: f32 = 24;
 
+            // Draw value text
             const valueWithNull = std.fmt.allocPrintZ(allocator, "{s}", .{self.value}) catch |err| {
                 std.log.err("Failed to allocate value string: {}", .{err});
                 return;
             };
             defer allocator.free(valueWithNull);
 
-            const valueWidth = rl.measureTextEx(font.?, valueWithNull.ptr, fontSize, 0).x;
+            // Draw suit texture
+            if (suit_textures.?.get(self.suit)) |texture| {
+                const scale = 0.15;
+                const imageWidth = @as(f32, @floatFromInt(texture.width));
+                const imageHeight = @as(f32, @floatFromInt(texture.height));
 
-            const valueX = self.x + x_offset + 10;
-            const valueY = self.y + 10;
-            rl.drawTextEx(font.?, valueWithNull.ptr, rl.Vector2{ .x = @as(f32, @floatFromInt(valueX)), .y = @as(f32, @floatFromInt(valueY)) }, fontSize, 0, color);
-            const valueXBottomRight = self.x + self.width - x_offset - @as(i32, @intFromFloat(valueWidth)) - 10;
-            const valueYBottomRight = self.y + self.height - @as(i32, @intFromFloat(fontSize)) - 10;
+                const source_rect = rl.Rectangle{
+                    .x = 0,
+                    .y = 0,
+                    .width = imageWidth,
+                    .height = imageHeight,
+                };
+
+                const dest_rect = rl.Rectangle{
+                    .x = center_x,
+                    .y = center_y,
+                    .width = imageWidth * scale,
+                    .height = imageHeight * scale,
+                };
+
+                const img_origin = rl.Vector2{
+                    .x = (imageWidth * scale) / 2,
+                    .y = (imageHeight * scale) / 2,
+                };
+
+                rl.drawTexturePro(
+                    texture,
+                    source_rect,
+                    dest_rect,
+                    img_origin,
+                    self.rotation,
+                    rl.Color.white,
+                );
+            }
+
+            const text_pos = rl.Vector2{
+                .x = center_x - @as(f32, @floatFromInt(current_width)) / 2.8,
+                .y = center_y - @as(f32, @floatFromInt(current_height)) / 2.8,
+            };
+
             rl.drawTextPro(
                 font.?,
                 valueWithNull.ptr,
-                rl.Vector2{
-                    .x = @as(f32, @floatFromInt(valueXBottomRight)),
-                    .y = @as(f32, @floatFromInt(valueYBottomRight)),
-                },
-                rl.Vector2{ .x = valueWidth, .y = fontSize },
-                180,
+                text_pos,
+                rl.Vector2{ .x = 0, .y = 0 },
+                self.rotation,
                 fontSize,
                 0,
                 color,
             );
 
-            if (suit_textures.?.get(self.suit)) |texture| {
-                const scale = 0.15;
-                const scaledWidth = @as(f32, @floatFromInt(texture.width)) * scale;
-                const scaledHeight = @as(f32, @floatFromInt(texture.height)) * scale;
-                const suitX = self.x + x_offset + @divTrunc(self.width - x_offset * 2, 2) - @divTrunc(@as(i32, @intFromFloat(scaledWidth)), 2);
-                const suitY = self.y + @divTrunc(self.height, 2) - @divTrunc(@as(i32, @intFromFloat(scaledHeight)), 2);
+            const bottom_text_pos = rl.Vector2{
+                .x = center_x + @as(f32, @floatFromInt(current_width)) / 2.8,
+                .y = center_y + @as(f32, @floatFromInt(current_height)) / 2.8,
+            };
 
-                rl.drawTextureEx(
-                    texture,
-                    rl.Vector2{ .x = @as(f32, @floatFromInt(suitX)), .y = @as(f32, @floatFromInt(suitY)) },
-                    0,
-                    scale,
-                    rl.Color.white,
-                );
-            }
+            rl.drawTextPro(
+                font.?,
+                valueWithNull.ptr,
+                bottom_text_pos,
+                rl.Vector2{ .x = 0, .y = 0 },
+                self.rotation + 180,
+                fontSize,
+                0,
+                color,
+            );
         }
     }
 
     fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
         const texture = card_back_texture.?;
-        const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
-        const maxHeight = @as(f32, @floatFromInt(self.height - 10));
+        const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
+
+        const current_width = self.width - x_offset * 2;
+        const current_height = self.height;
+
+        // Calculate center point for rotation
+        const center_x = @as(f32, @floatFromInt(self.x + x_offset + @divTrunc(current_width, 2)));
+        const center_y = @as(f32, @floatFromInt(self.y + y_offset + @divTrunc(current_height, 2)));
+
+        // Draw outer rectangle (border) with rotation
+        const outer_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width),
+            .height = @floatFromInt(current_height),
+        };
+        const outer_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width, 2)),
+            .y = @floatFromInt(@divTrunc(current_height, 2)),
+        };
+
+        // Draw inner rectangle (card background) with rotation
+        const inner_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width - self.borderSpace * 2),
+            .height = @floatFromInt(current_height - self.borderSpace * 2),
+        };
+        const inner_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width - self.borderSpace * 2, 2)),
+            .y = @floatFromInt(@divTrunc(current_height - self.borderSpace * 2, 2)),
+        };
+
+        // Draw border and card background
+        rl.drawRectanglePro(outer_rect, outer_origin, self.rotation, self.borderColor);
+        rl.drawRectanglePro(inner_rect, inner_origin, self.rotation, card_color);
+
+        // Draw back texture
         const imageWidth = @as(f32, @floatFromInt(texture.width));
         const imageHeight = @as(f32, @floatFromInt(texture.height));
+        const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
+        const maxHeight = @as(f32, @floatFromInt(self.height - 10));
 
         const scaleWidth = maxWidth / imageWidth;
         const scaleHeight = maxHeight / imageHeight;
         const scale = @min(scaleWidth, scaleHeight);
 
-        const scaledWidth = imageWidth * scale;
-        const scaledHeight = imageHeight * scale;
+        const source_rect = rl.Rectangle{
+            .x = 0,
+            .y = 0,
+            .width = imageWidth,
+            .height = imageHeight,
+        };
 
-        const imageX = self.x + x_offset + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.width - x_offset * 2)) - scaledWidth) / 2));
-        const imageY = self.y + @as(i32, @intFromFloat((@as(f32, @floatFromInt(self.height)) - scaledHeight) / 2));
+        const dest_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = imageWidth * scale,
+            .height = imageHeight * scale,
+        };
 
-        const border_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = alpha };
-        const card_color = rl.Color{ .r = 245, .g = 242, .b = 237, .a = alpha };
-        const current_width = self.width - x_offset * 2;
-        const current_height = self.height;
-        const border_size: i32 = 2;
-        const corner_cut: i32 = 5;
+        const img_origin = rl.Vector2{
+            .x = (imageWidth * scale) / 2,
+            .y = (imageHeight * scale) / 2,
+        };
 
-        const x = self.x + x_offset;
-        const y = self.y + y_offset;
-
-        rl.drawRectangle(x + corner_cut, y, current_width - corner_cut * 2, border_size, border_color);
-        rl.drawRectangle(x + corner_cut, y + current_height - border_size, current_width - corner_cut * 2, border_size, border_color);
-        rl.drawRectangle(x, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
-        rl.drawRectangle(x + current_width - border_size, y + corner_cut, border_size, current_height - corner_cut * 2, border_color);
-
-        rl.drawRectangle(x + border_size, y + border_size, current_width - border_size * 2, current_height - border_size * 2, card_color);
-        rl.drawTextureEx(
+        rl.drawTexturePro(
             texture,
-            rl.Vector2{ .x = @as(f32, @floatFromInt(imageX)), .y = @as(f32, @floatFromInt(imageY)) },
-            0,
-            scale,
+            source_rect,
+            dest_rect,
+            img_origin,
+            self.rotation,
             rl.Color.white,
         );
     }

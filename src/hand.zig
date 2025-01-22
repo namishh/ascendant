@@ -54,7 +54,6 @@ pub const Hand = struct {
     }
 
     pub fn draw(self: Hand) void {
-        // Draw cards from back to front for proper layering
         var i: usize = 0;
         while (i < self.cards.items.len) : (i += 1) {
             self.cards.items[i].draw();
