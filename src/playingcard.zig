@@ -21,7 +21,7 @@ pub const PlayingCard = struct {
     fn isFaceCard(value: []const u8) bool {
         return std.mem.eql(u8, value, "k") or
             std.mem.eql(u8, value, "q") or
-            std.mem.eql(u8, value, "j");
+            std.mem.eql(u8, value, "j") or std.mem.eql(u8, value, "a");
     }
 
     fn isJoker(value: []const u8) bool {
@@ -35,15 +35,12 @@ pub const PlayingCard = struct {
 
         font = try rl.loadFontEx("assets/font.ttf", 32, null);
 
-        // Load card back texture
         card_back_texture = try rl.loadTexture("assets/card-back.jpg");
 
-        // Initialize hashmaps
         suit_textures = std.StringHashMap(rl.Texture2D).init(allocator);
         face_card_textures = std.StringHashMap(rl.Texture2D).init(allocator);
         joker_textures = std.StringHashMap(rl.Texture2D).init(allocator);
 
-        // Load joker textures
         const joker_numbers = [_][]const u8{ "1", "2" };
         for (joker_numbers) |num| {
             const key = try allocator.dupe(u8, num);
@@ -63,7 +60,7 @@ pub const PlayingCard = struct {
             const texture = try rl.loadTexture(suit_path.ptr);
             try suit_textures.?.put(suit, texture);
 
-            const face_cards = [_][]const u8{ "k", "q", "j" };
+            const face_cards = [_][]const u8{ "k", "q", "j", "a" };
             for (face_cards) |face| {
                 const ext = ".jpg";
                 const key = try allocator.dupe(u8, try std.fmt.allocPrint(allocator, "{s}-{s}", .{ face, suit }));
@@ -129,19 +126,7 @@ pub const PlayingCard = struct {
     }
 
     pub fn update(self: *PlayingCard) void {
-        const mouse_pos = rl.getMousePosition();
-        self.is_hovered = mouse_pos.x >= @as(f32, @floatFromInt(self.x)) and
-            mouse_pos.x <= @as(f32, @floatFromInt(self.x + self.width)) and
-            mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
-            mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
-
-        // Update flip animation with easing
-        const flip_speed: f32 = 4.0;
-        if (self.is_hovered) {
-            self.flip_progress = @min(1.0, self.flip_progress + rl.getFrameTime() * flip_speed);
-        } else {
-            self.flip_progress = @max(0.0, self.flip_progress - rl.getFrameTime() * flip_speed);
-        }
+        std.debug.print("Updating card: {s} of {s}\n", .{ self.value, self.suit });
     }
 
     pub fn draw(self: PlayingCard) void {
@@ -149,20 +134,16 @@ pub const PlayingCard = struct {
         const perspective_scale = 0.25;
         const shadow_intensity = 0.3;
 
-        // Calculate animated properties
         const width_scale = @abs(@cos(flip_angle));
         const scaled_width = @as(i32, @intFromFloat(@as(f32, @floatFromInt(self.width)) * width_scale));
         const vertical_offset = @as(i32, @intFromFloat(@sin(flip_angle) * perspective_scale * 50));
         const x_offset = @divTrunc(self.width - scaled_width, 2);
 
-        // Draw shadow with perspective
         const shadow_alpha = @as(u8, @intFromFloat(80 * (1.0 - width_scale) + 50 * shadow_intensity));
         const shadow_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = shadow_alpha };
         rl.drawRectangle(self.x + x_offset + 5, self.y + 10 + @as(i32, @intCast(@abs(vertical_offset))), scaled_width, self.height, shadow_color);
 
-        // Draw card base with perspective transform
         if (width_scale > 0.1) {
-            // Front face
             const front_alpha = @as(u8, @intFromFloat(255 * (1.0 - self.flip_progress)));
             rl.beginScissorMode(self.x + x_offset, self.y, scaled_width, self.height);
             self.drawFront(x_offset, vertical_offset * @as(i32, @intFromFloat(1.0 - self.flip_progress)), front_alpha);

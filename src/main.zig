@@ -75,7 +75,7 @@ pub fn main() anyerror!void {
     var game_state = try GameState.init(allocator);
     defer game_state.deinit();
 
-    rl.setTargetFPS(60);
+    rl.setTargetFPS(144);
 
     while (!rl.windowShouldClose()) {
         time += rl.getFrameTime();
@@ -95,6 +95,6 @@ pub fn main() anyerror!void {
 
         game_state.draw();
 
-        rl.drawFPS(910, 10);
+        rl.drawFPS(1190, 10);
     }
 }

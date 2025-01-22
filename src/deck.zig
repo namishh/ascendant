@@ -18,8 +18,7 @@ pub const Deck = struct {
         for (suits) |suit| {
             for (values) |value| {
                 try cards.append(PlayingCard.init(value, suit, x, // Use deck's x position
-                    y // Use deck's y position
-                ));
+                    y));
             }
         }
 
@@ -82,7 +81,7 @@ pub const Deck = struct {
     }
 
     pub fn draw(self: Deck) void {
-        const visible_cards = @min(self.cards.items.len, 5);
+        const visible_cards = 5;
         const offset: i32 = 2;
 
         var i: usize = 0;
