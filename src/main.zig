@@ -47,8 +47,8 @@ pub fn main() anyerror!void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const screenWidth = 1000;
-    const screenHeight = 650;
+    const screenWidth = 1280;
+    const screenHeight = 720;
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow();
 

@@ -12,13 +12,11 @@ pub const Deck = struct {
         var cards = std.ArrayList(PlayingCard).init(allocator);
         const used_cards = std.ArrayList(PlayingCard).init(allocator);
 
-        // Initialize standard deck
         const suits = [_][]const u8{ "hearts", "diamonds", "clubs", "spades" };
         const values = [_][]const u8{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a" };
 
         for (suits) |suit| {
             for (values) |value| {
-                // Create card with the deck's position
                 try cards.append(PlayingCard.init(value, suit, x, // Use deck's x position
                     y // Use deck's y position
                 ));
@@ -84,13 +82,13 @@ pub const Deck = struct {
     }
 
     pub fn draw(self: Deck) void {
-        const visible_cards = @min(self.cards.items.len, 10);
-        const offset: i32 = 2; // Slight offset for each card in the pile
+        const visible_cards = @min(self.cards.items.len, 5);
+        const offset: i32 = 2;
 
         var i: usize = 0;
         while (i < visible_cards) : (i += 1) {
             const card_y = self.y - @as(i32, @intCast(i)) * offset;
-            var display_card = PlayingCard.init("", "", self.x, card_y);
+            var display_card = PlayingCard.init("", "", self.x, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0; // Show back of card
             display_card.draw();
         }
