@@ -28,8 +28,8 @@ pub const Deck = struct {
         return Deck{
             .cards = cards,
             .used_cards = used_cards,
-            .x = @divTrunc(rl.getScreenWidth(), 2) - 50,
-            .y = @divTrunc(rl.getScreenHeight(), 2) - 60,
+            .x = @divTrunc(rl.getScreenWidth(), 4) - 50,
+            .y = @divTrunc(rl.getScreenHeight(), 2) - 100,
         };
     }
 
