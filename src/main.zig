@@ -32,6 +32,7 @@ const GameState = struct {
         self.hand.update();
 
         if (rl.isKeyPressed(.space)) {
+            try self.deck.reset();
             try self.hand.drawRandomHand(&self.deck);
         }
     }

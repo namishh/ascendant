@@ -1,6 +1,20 @@
 const rl = @import("raylib");
 const std = @import("std");
 
+pub fn calculateCardCorners(x: f32, y: f32, theta: f32, width: f32, height: f32, padding: f32) struct { top_left: rl.Vector2, bottom_right: rl.Vector2 } {
+    const half_width = (width - 2 * padding) / 2;
+    const half_height = (height - 2 * padding) / 2;
+
+    const cos_theta = @cos(theta);
+    const sin_theta = @sin(theta);
+
+    const top_left = rl.Vector2{ .x = (x + -half_width * cos_theta + half_height * sin_theta), .y = (y + -half_width * sin_theta - half_height * cos_theta) };
+
+    const bottom_right = rl.Vector2{ .x = (x + half_width * cos_theta - half_height * sin_theta), .y = (y + half_width * sin_theta + half_height * cos_theta) };
+
+    return .{ .top_left = top_left, .bottom_right = bottom_right };
+}
+
 pub const PlayingCard = struct {
     value: []const u8,
     suit: []const u8,
@@ -346,7 +360,7 @@ pub const PlayingCard = struct {
             else
                 rl.Color.black;
 
-            const fontSize: f32 = 24;
+            const fontSize: f32 = 28;
 
             // Draw value text
             const valueWithNull = std.fmt.allocPrintZ(allocator, "{s}", .{self.value}) catch |err| {
@@ -390,15 +404,12 @@ pub const PlayingCard = struct {
                 );
             }
 
-            const text_pos = rl.Vector2{
-                .x = center_x - @as(f32, @floatFromInt(current_width)) / 2.8,
-                .y = center_y - @as(f32, @floatFromInt(current_height)) / 2.8,
-            };
+            const positions = calculateCardCorners(center_x, center_y, std.math.degreesToRadians(self.rotation), @as(f32, @floatFromInt(self.width)), @as(f32, @floatFromInt(self.height)), 10);
 
             rl.drawTextPro(
                 font.?,
                 valueWithNull.ptr,
-                text_pos,
+                positions.top_left,
                 rl.Vector2{ .x = 0, .y = 0 },
                 self.rotation,
                 fontSize,
@@ -406,15 +417,10 @@ pub const PlayingCard = struct {
                 color,
             );
 
-            const bottom_text_pos = rl.Vector2{
-                .x = center_x + @as(f32, @floatFromInt(current_width)) / 2.8,
-                .y = center_y + @as(f32, @floatFromInt(current_height)) / 2.8,
-            };
-
             rl.drawTextPro(
                 font.?,
                 valueWithNull.ptr,
-                bottom_text_pos,
+                positions.bottom_right,
                 rl.Vector2{ .x = 0, .y = 0 },
                 self.rotation + 180,
                 fontSize,
