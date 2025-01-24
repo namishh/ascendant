@@ -14,7 +14,6 @@ pub const Deck = struct {
 
         const suits = [_][]const u8{ "hearts", "diamonds", "clubs", "spades" };
         const values = [_][]const u8{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a" };
-
         for (suits) |suit| {
             for (values) |value| {
                 try cards.append(PlayingCard.init(value, suit, 300, 150));

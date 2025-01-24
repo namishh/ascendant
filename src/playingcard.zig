@@ -171,23 +171,14 @@ pub const PlayingCard = struct {
     //     }
     // }
     pub fn update(self: *PlayingCard) void {
-        const mouse_pos = rl.getMousePosition();
-        self.is_hovered = mouse_pos.x >= @as(f32, @floatFromInt(self.x)) and
-            mouse_pos.x <= @as(f32, @floatFromInt(self.x + self.width)) and
-            mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
-            mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
-
-        // Update hover target based on hover state
         self.target_hover = if (self.is_hovered) 1.0 else 0.0;
 
-        // Smooth transition
         if (self.current_hover < self.target_hover) {
             self.current_hover = @min(self.current_hover + self.hover_speed, self.target_hover);
         } else if (self.current_hover > self.target_hover) {
             self.current_hover = @max(self.current_hover - self.hover_speed, self.target_hover);
         }
 
-        // Apply hover offset
         self.y = self.base_y + @as(i32, @intFromFloat(self.current_hover * self.hover_offset));
     }
 
@@ -428,6 +419,10 @@ pub const PlayingCard = struct {
                 color,
             );
         }
+    }
+
+    pub fn equals(self: *PlayingCard, other: *PlayingCard) bool {
+        return std.mem.eql(u8, self.value, other.value) and std.mem.eql(u8, self.suit, other.suit);
     }
 
     fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
