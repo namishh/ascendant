@@ -150,26 +150,6 @@ pub const PlayingCard = struct {
         };
     }
 
-    // pub fn update(self: *PlayingCard) void {
-    //     const mouse_pos = rl.getMousePosition();
-
-    //     // Check if mouse is over card
-    //     self.is_hovered = mouse_pos.x >= @as(f32, @floatFromInt(self.x)) and
-    //         mouse_pos.x <= @as(f32, @floatFromInt(self.x + self.width)) and
-    //         mouse_pos.y >= @as(f32, @floatFromInt(self.y)) and
-    //         mouse_pos.y <= @as(f32, @floatFromInt(self.y + self.height));
-
-    //     // Update flip target based on hover state
-    //     self.flip_target = if (self.is_hovered) 1.0 else 0.0;
-
-    //     // Smooth animation
-    //     const flip_speed = 0.05;
-    //     if (self.flip_progress < self.flip_target) {
-    //         self.flip_progress = @min(self.flip_progress + flip_speed, self.flip_target);
-    //     } else if (self.flip_progress > self.flip_target) {
-    //         self.flip_progress = @max(self.flip_progress - flip_speed, self.flip_target);
-    //     }
-    // }
     pub fn update(self: *PlayingCard) void {
         self.target_hover = if (self.is_hovered) 1.0 else 0.0;
 
@@ -180,6 +160,14 @@ pub const PlayingCard = struct {
         }
 
         self.y = self.base_y + @as(i32, @intFromFloat(self.current_hover * self.hover_offset));
+
+        // Flipping animation
+        const flip_speed = 0.05;
+        if (self.flip_progress < self.flip_target) {
+            self.flip_progress = @min(self.flip_progress + flip_speed, self.flip_target);
+        } else if (self.flip_progress > self.flip_target) {
+            self.flip_progress = @max(self.flip_progress - flip_speed, self.flip_target);
+        }
     }
 
     pub fn draw(self: PlayingCard) void {

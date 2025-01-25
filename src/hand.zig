@@ -117,15 +117,21 @@ pub const Hand = struct {
         if (self.cards.items.len == 0) return;
 
         var card = &self.cards.items[self.current_card_index];
-        card.flip_progress = 0;
-        card.is_hovered = true;
 
         const found = inSlice(*PlayingCard, self.selected_cards, card);
 
         if (!found.found) {
-            self.selected_cards.append(card) catch return; // Store a pointer to the card
+            card.flip_target = 0.0;
+            card.is_hovered = true;
+            self.selected_cards.append(card) catch return;
         } else if (found.position < self.selected_cards.items.len) {
-            _ = self.selected_cards.orderedRemove(found.position);
+            if (card.flip_target == 0 and card.is_hovered == true) {
+                card.is_hovered = false;
+                _ = self.selected_cards.orderedRemove(found.position);
+            } else {
+                card.flip_target = 1.0 - card.flip_target;
+                card.is_hovered = true;
+            }
         }
     }
 
@@ -133,15 +139,22 @@ pub const Hand = struct {
         if (self.cards.items.len == 0) return;
 
         var card = &self.cards.items[self.current_card_index];
-        card.flip_progress = 1;
-        card.is_hovered = true;
 
         const found = inSlice(*PlayingCard, self.selected_cards, card);
+
         if (!found.found) {
+            card.flip_target = 1.0;
+            card.is_hovered = true;
             self.selected_cards.append(card) catch return;
         } else if (found.position < self.selected_cards.items.len) {
-            card.flip_progress = 0;
-            _ = self.selected_cards.orderedRemove(found.position);
+            if (card.flip_progress == 1.0) {
+                card.flip_target = 0.0;
+                card.is_hovered = false;
+                _ = self.selected_cards.orderedRemove(found.position);
+            } else {
+                card.flip_target = 1.0;
+                card.is_hovered = true;
+            }
         }
     }
 
