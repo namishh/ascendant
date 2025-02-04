@@ -1,12 +1,14 @@
 const rl = @import("raylib");
 const std = @import("std");
 const PlayingCard = @import("playingcard.zig").PlayingCard;
+const CardOverlay = @import("cardoverlay.zig").CardOverlay;
 const Deck = @import("deck.zig").Deck;
 const Hand = @import("hand.zig").Hand;
 
 const GameState = struct {
     deck: Deck,
     hand: Hand,
+    cardoverlay: CardOverlay,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
@@ -16,20 +18,25 @@ const GameState = struct {
         var hand = Hand.init(allocator);
         try hand.drawRandomHand(&deck);
 
+        const cardoverlay = CardOverlay.init();
+
         return GameState{
             .deck = deck,
             .hand = hand,
             .allocator = allocator,
+            .cardoverlay = cardoverlay,
         };
     }
 
     pub fn deinit(self: *GameState) void {
         self.deck.deinit();
         self.hand.deinit();
+        self.cardoverlay.deinit();
     }
 
     pub fn update(self: *GameState) !void {
         self.hand.update();
+        self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
         if (rl.isKeyPressed(.space)) {
             try self.deck.reset();
@@ -40,6 +47,7 @@ const GameState = struct {
     pub fn draw(self: *GameState) void {
         self.deck.draw();
         self.hand.draw();
+        self.cardoverlay.draw();
     }
 };
 

@@ -80,10 +80,6 @@ pub const Hand = struct {
             card.y = card.base_y + @as(i32, @intFromFloat(self.hover_lift));
         }
 
-        for (self.cards.items) |*card| {
-            card.update();
-        }
-
         if (rl.isKeyPressed(.a)) {
             self.cyclePrevCard();
         }
@@ -95,6 +91,11 @@ pub const Hand = struct {
         }
         if (rl.isKeyPressed(.s)) {
             self.selectCardHidden();
+        }
+
+        for (self.cards.items) |*card| {
+            card.is_current = card == &self.cards.items[self.current_card_index];
+            card.update();
         }
     }
 

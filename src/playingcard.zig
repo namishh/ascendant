@@ -28,6 +28,7 @@ pub const PlayingCard = struct {
     hover_speed: f32 = 0.2,
 
     is_hovered: bool = false,
+    is_current: bool = false,
     hover_offset: f32 = 0.0,
     flip_progress: f32 = 0.0,
     flip_target: f32 = 0.0,
