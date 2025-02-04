@@ -125,6 +125,12 @@ pub const Hand = struct {
             card.flip_target = 0.0;
             card.is_hovered = true;
             self.selected_cards.append(card) catch return;
+
+            if (self.selected_cards.items.len > 3) {
+                const removed_card = self.selected_cards.orderedRemove(0);
+                removed_card.flip_target = 0.0;
+                removed_card.is_hovered = false;
+            }
         } else if (found.position < self.selected_cards.items.len) {
             if (card.flip_target == 0 and card.is_hovered == true) {
                 card.is_hovered = false;
@@ -132,6 +138,9 @@ pub const Hand = struct {
             } else {
                 card.flip_target = 1.0 - card.flip_target;
                 card.is_hovered = true;
+
+                _ = self.selected_cards.orderedRemove(found.position);
+                self.selected_cards.append(card) catch return;
             }
         }
     }
@@ -147,6 +156,12 @@ pub const Hand = struct {
             card.flip_target = 1.0;
             card.is_hovered = true;
             self.selected_cards.append(card) catch return;
+
+            if (self.selected_cards.items.len > 3) {
+                const removed_card = self.selected_cards.orderedRemove(0);
+                removed_card.flip_target = 0.0;
+                removed_card.is_hovered = false;
+            }
         } else if (found.position < self.selected_cards.items.len) {
             if (card.flip_progress == 1.0) {
                 card.flip_target = 0.0;
@@ -155,6 +170,9 @@ pub const Hand = struct {
             } else {
                 card.flip_target = 1.0;
                 card.is_hovered = true;
+
+                _ = self.selected_cards.orderedRemove(found.position);
+                self.selected_cards.append(card) catch return;
             }
         }
     }
