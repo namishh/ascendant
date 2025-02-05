@@ -20,8 +20,8 @@ pub const PlayingCard = struct {
     suit: []const u8,
     x: i32,
     y: i32,
-    width: i32 = 100,
-    height: i32 = 120,
+    width: i32 = 125,
+    height: i32 = 150,
     base_y: i32 = 0,
     current_hover: f32 = 0.0,
     target_hover: f32 = 0.0,
@@ -351,7 +351,7 @@ pub const PlayingCard = struct {
 
             // Draw suit texture
             if (suit_textures.?.get(self.suit)) |texture| {
-                const scale = 0.15;
+                const scale = 0.25;
                 const imageWidth = @as(f32, @floatFromInt(texture.width));
                 const imageHeight = @as(f32, @floatFromInt(texture.height));
 
