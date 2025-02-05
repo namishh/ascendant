@@ -71,10 +71,9 @@ pub fn main() anyerror!void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const screenWidth = 1920;
-    const screenHeight = 1080;
+    const screenWidth = 1900;
+    const screenHeight = 960;
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
-    rl.toggleBorderlessWindowed();
     defer rl.closeWindow();
 
     const vsPath = "src/shaders/lines.vs";
