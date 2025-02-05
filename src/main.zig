@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const std = @import("std");
 const PlayingCard = @import("playingcard.zig").PlayingCard;
 const CardOverlay = @import("cardoverlay.zig").CardOverlay;
+const ToastManager = @import("toasts.zig").ToastManager;
 const Deck = @import("deck.zig").Deck;
 const Hand = @import("hand.zig").Hand;
 
@@ -9,6 +10,7 @@ const GameState = struct {
     deck: Deck,
     hand: Hand,
     cardoverlay: CardOverlay,
+    toastmanager: ToastManager,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
@@ -20,9 +22,12 @@ const GameState = struct {
 
         const cardoverlay = CardOverlay.init();
 
+        const toastmanager = ToastManager.init(allocator);
+
         return GameState{
             .deck = deck,
             .hand = hand,
+            .toastmanager = toastmanager,
             .allocator = allocator,
             .cardoverlay = cardoverlay,
         };
@@ -32,6 +37,7 @@ const GameState = struct {
         self.deck.deinit();
         self.hand.deinit();
         self.cardoverlay.deinit();
+        self.toastmanager.deinit();
     }
 
     pub fn update(self: *GameState) !void {
@@ -41,13 +47,22 @@ const GameState = struct {
         if (rl.isKeyPressed(.space)) {
             try self.deck.reset();
             try self.hand.drawRandomHand(&self.deck);
+            try self.toastmanager.show(
+                null, // image path
+                "Achievement!", // title
+                "rare", // priority (can be null)
+                "You did it!", // message
+            );
         }
+
+        self.toastmanager.update();
     }
 
     pub fn draw(self: *GameState) void {
         self.deck.draw();
         self.hand.draw();
         self.cardoverlay.draw();
+        self.toastmanager.draw();
     }
 };
 
@@ -59,7 +74,7 @@ pub fn main() anyerror!void {
     const screenWidth = 1920;
     const screenHeight = 1080;
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
-    rl.toggleFullscreen();
+    rl.toggleBorderlessWindowed();
     defer rl.closeWindow();
 
     const vsPath = "src/shaders/lines.vs";
@@ -105,6 +120,6 @@ pub fn main() anyerror!void {
 
         game_state.draw();
 
-        rl.drawFPS(1190, 10);
+        rl.drawFPS(10, 10);
     }
 }
