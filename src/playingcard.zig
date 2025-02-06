@@ -20,7 +20,7 @@ pub const PlayingCard = struct {
     suit: []const u8,
     x: i32,
     y: i32,
-    width: i32 = 125,
+    width: i32 = 120,
     height: i32 = 150,
     base_y: i32 = 0,
     current_hover: f32 = 0.0,
@@ -60,7 +60,7 @@ pub const PlayingCard = struct {
 
         font = try rl.loadFontEx("assets/font.ttf", 32, null);
 
-        card_back_texture = try rl.loadTexture("assets/card-back.jpg");
+        card_back_texture = try rl.loadTexture("assets/card-back.jpeg");
 
         suit_textures = std.StringHashMap(rl.Texture2D).init(allocator);
         face_card_textures = std.StringHashMap(rl.Texture2D).init(allocator);
@@ -71,14 +71,14 @@ pub const PlayingCard = struct {
             const key = try allocator.dupe(u8, num);
             errdefer allocator.free(key);
 
-            const path = try std.fmt.allocPrintZ(allocator, "assets/joker-{s}.jpg", .{num});
+            const path = try std.fmt.allocPrintZ(allocator, "assets/joker-{s}.jpeg", .{num});
             defer allocator.free(path);
 
             const joker_texture = try rl.loadTexture(path.ptr);
             try joker_textures.?.put(key, joker_texture);
         }
 
-        const suits = [_][]const u8{ "hearts", "diamonds", "clubs", "spades" };
+        const suits = [_][]const u8{ "fire", "water", "ice" };
         for (suits) |suit| {
             const suit_path = try std.fmt.allocPrintZ(allocator, "assets/{s}.png", .{suit});
             defer allocator.free(suit_path);
@@ -87,7 +87,7 @@ pub const PlayingCard = struct {
 
             const face_cards = [_][]const u8{ "k", "q", "j", "a" };
             for (face_cards) |face| {
-                const ext = ".jpg";
+                const ext = ".jpeg";
                 const key = try allocator.dupe(u8, try std.fmt.allocPrint(allocator, "{s}-{s}", .{ face, suit }));
                 errdefer allocator.free(key);
 
@@ -335,10 +335,10 @@ pub const PlayingCard = struct {
                 );
             }
         } else {
-            const color = if (std.mem.eql(u8, self.suit, "hearts") or std.mem.eql(u8, self.suit, "diamonds"))
-                rl.Color.red
+            const color = if (std.mem.eql(u8, self.suit, "water") or std.mem.eql(u8, self.suit, "ice"))
+                rl.Color.sky_blue
             else
-                rl.Color.black;
+                rl.Color.orange;
 
             const fontSize: f32 = 28;
 

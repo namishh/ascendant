@@ -14,29 +14,25 @@ pub fn inSlice(comptime T: type, haystack: std.ArrayList(T), needle: T) struct {
 
 pub const Hand = struct {
     cards: std.ArrayList(PlayingCard),
-    selected_cards: std.ArrayList(*PlayingCard),
     current_card_index: usize = 0,
-    spacing: i32 = 60,
-    hover_lift: f32 = -30.0,
+    spacing: i32 = 80,
+    hover_lift: f32 = -20.0,
 
     pub fn init(allocator: std.mem.Allocator) Hand {
         return Hand{
             .cards = std.ArrayList(PlayingCard).init(allocator),
-            .selected_cards = std.ArrayList(*PlayingCard).init(allocator),
         };
     }
 
     pub fn deinit(self: *Hand) void {
         self.cards.deinit();
-        self.selected_cards.deinit();
     }
 
     pub fn drawRandomHand(self: *Hand, deck: *Deck) !void {
         self.cards.clearRetainingCapacity();
-        self.selected_cards.clearRetainingCapacity();
         self.current_card_index = 0;
 
-        const num_cards: i32 = 10;
+        const num_cards: i32 = 6;
         const window_width = rl.getScreenWidth();
         const window_height = rl.getScreenHeight();
         const card_width = 100;
@@ -68,16 +64,8 @@ pub const Hand = struct {
             card.is_hovered = false;
         }
 
-        for (self.selected_cards.items) |card| {
-            card.is_hovered = true;
-        }
-
         if (self.cards.items.len > 0) {
             self.cards.items[self.current_card_index].is_hovered = true;
-        }
-
-        for (self.selected_cards.items) |card| {
-            card.y = card.base_y + @as(i32, @intFromFloat(self.hover_lift));
         }
 
         if (rl.isKeyPressed(.a)) {
@@ -85,12 +73,6 @@ pub const Hand = struct {
         }
         if (rl.isKeyPressed(.d)) {
             self.cycleNextCard();
-        }
-        if (rl.isKeyPressed(.w)) {
-            self.selectCardNormal();
-        }
-        if (rl.isKeyPressed(.s)) {
-            self.selectCardHidden();
         }
 
         for (self.cards.items) |*card| {
@@ -112,69 +94,6 @@ pub const Hand = struct {
         if (self.cards.items.len == 0) return;
 
         self.current_card_index = (self.current_card_index + 1) % self.cards.items.len;
-    }
-
-    fn selectCardNormal(self: *Hand) void {
-        if (self.cards.items.len == 0) return;
-
-        var card = &self.cards.items[self.current_card_index];
-
-        const found = inSlice(*PlayingCard, self.selected_cards, card);
-
-        if (!found.found) {
-            card.flip_target = 0.0;
-            card.is_hovered = true;
-            self.selected_cards.append(card) catch return;
-
-            if (self.selected_cards.items.len > 3) {
-                const removed_card = self.selected_cards.orderedRemove(0);
-                removed_card.flip_target = 0.0;
-                removed_card.is_hovered = false;
-            }
-        } else if (found.position < self.selected_cards.items.len) {
-            if (card.flip_target == 0 and card.is_hovered == true) {
-                card.is_hovered = false;
-                _ = self.selected_cards.orderedRemove(found.position);
-            } else {
-                card.flip_target = 1.0 - card.flip_target;
-                card.is_hovered = true;
-
-                _ = self.selected_cards.orderedRemove(found.position);
-                self.selected_cards.append(card) catch return;
-            }
-        }
-    }
-
-    fn selectCardHidden(self: *Hand) void {
-        if (self.cards.items.len == 0) return;
-
-        var card = &self.cards.items[self.current_card_index];
-
-        const found = inSlice(*PlayingCard, self.selected_cards, card);
-
-        if (!found.found) {
-            card.flip_target = 1.0;
-            card.is_hovered = true;
-            self.selected_cards.append(card) catch return;
-
-            if (self.selected_cards.items.len > 3) {
-                const removed_card = self.selected_cards.orderedRemove(0);
-                removed_card.flip_target = 0.0;
-                removed_card.is_hovered = false;
-            }
-        } else if (found.position < self.selected_cards.items.len) {
-            if (card.flip_progress == 1.0) {
-                card.flip_target = 0.0;
-                card.is_hovered = false;
-                _ = self.selected_cards.orderedRemove(found.position);
-            } else {
-                card.flip_target = 1.0;
-                card.is_hovered = true;
-
-                _ = self.selected_cards.orderedRemove(found.position);
-                self.selected_cards.append(card) catch return;
-            }
-        }
     }
 
     pub fn draw(self: Hand) void {

@@ -45,8 +45,8 @@ const GameState = struct {
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
         if (rl.isKeyPressed(.space)) {
-            // try self.deck.reset();
-            // try self.hand.drawRandomHand(&self.deck);
+            try self.deck.reset();
+            try self.hand.drawRandomHand(&self.deck);
             try self.toastmanager.show(
                 null, // image path
                 "Achievement!", // title
@@ -57,7 +57,7 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.left_alt)) {
             try self.toastmanager.show(
-                "assets/hearts.png", // image path
+                "assets/ice.png", // image path
                 "Uh oh!",
                 "error", // priority (can be null)
                 "You did fucky wucky!", // message

@@ -12,7 +12,7 @@ pub const Deck = struct {
         var cards = std.ArrayList(PlayingCard).init(allocator);
         const used_cards = std.ArrayList(PlayingCard).init(allocator);
 
-        const suits = [_][]const u8{ "hearts", "diamonds", "clubs", "spades" };
+        const suits = [_][]const u8{ "fire", "water", "ice" };
         const values = [_][]const u8{ "2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k", "a" };
         for (suits) |suit| {
             for (values) |value| {
