@@ -22,7 +22,7 @@ const GameState = struct {
 
         const cardoverlay = CardOverlay.init();
 
-        const toastmanager = ToastManager.init(allocator);
+        const toastmanager = try ToastManager.init(allocator);
 
         return GameState{
             .deck = deck,

@@ -90,7 +90,10 @@ pub const ToastManager = struct {
     toasts: std.ArrayList(Toast),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) ToastManager {
+    var font: ?rl.Font = null;
+
+    pub fn init(allocator: std.mem.Allocator) !ToastManager {
+        font = try rl.loadFontEx("assets/font.ttf", 32, null);
         return ToastManager{
             .toasts = std.ArrayList(Toast).init(allocator),
             .allocator = allocator,
@@ -98,6 +101,10 @@ pub const ToastManager = struct {
     }
 
     pub fn deinit(self: *ToastManager) void {
+        if (font) |f| {
+            rl.unloadFont(f);
+            font = null;
+        }
         for (self.toasts.items) |*toast| {
             toast.deinit();
         }
@@ -185,11 +192,14 @@ pub const ToastManager = struct {
 
             // Draw title if exists
             if (toast.title) |title| {
-                rl.drawText(
+                rl.drawTextPro(
+                    font.?,
                     title.ptr,
-                    @as(i32, @intFromFloat(text_x)),
-                    @as(i32, @intFromFloat(y + toast.padding)),
-                    20,
+                    rl.Vector2{ .x = text_x, .y = y + toast.padding },
+                    rl.Vector2{ .x = 0, .y = 0 },
+                    0,
+                    24,
+                    0,
                     rl.Color{
                         .r = 255,
                         .g = 255,
@@ -199,31 +209,19 @@ pub const ToastManager = struct {
                 );
             }
 
-            if (toast.priority) |priority| {
-                rl.drawText(
-                    priority.ptr,
-                    @as(i32, @intFromFloat(text_x)),
-                    @as(i32, @intFromFloat(y + toast.padding + 25)),
-                    16,
-                    rl.Color{
-                        .r = 200,
-                        .g = 200,
-                        .b = 200,
-                        .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
-                    },
-                );
-            }
-
             if (toast.message) |message| {
-                rl.drawText(
+                rl.drawTextPro(
+                    font.?,
                     message.ptr,
-                    @as(i32, @intFromFloat(text_x)),
-                    @as(i32, @intFromFloat(y + toast.padding + 45)),
+                    rl.Vector2{ .x = text_x, .y = y + toast.padding + 25 },
+                    rl.Vector2{ .x = 0, .y = 0 },
+                    0,
                     16,
+                    0,
                     rl.Color{
-                        .r = 200,
-                        .g = 200,
-                        .b = 200,
+                        .r = 255,
+                        .g = 255,
+                        .b = 255,
                         .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
                     },
                 );
