@@ -130,7 +130,7 @@ pub const ToastManager = struct {
                 continue;
             }
 
-            const target_y = @as(f32, @floatFromInt(i)) * (toast.height + toast.spacing);
+            const target_y = @as(f32, @floatFromInt(i)) * (toast.height + toast.spacing) + 20;
             toast.y_offset += (target_y - toast.y_offset) * 0.1;
 
             i += 1;
@@ -157,11 +157,21 @@ pub const ToastManager = struct {
                 },
             );
 
+            var image_offset: f32 = 0;
+
             if (toast.texture) |texture| {
-                rl.drawTexture(
+                const max_height = toast.height - (toast.padding * 2);
+                const scale = max_height / @as(f32, @floatFromInt(texture.height));
+                image_offset = @as(f32, @floatFromInt(texture.width)) * scale + toast.padding;
+
+                rl.drawTextureEx(
                     texture,
-                    @as(i32, @intFromFloat(x + toast.padding)),
-                    @as(i32, @intFromFloat(y + toast.padding)),
+                    rl.Vector2{
+                        .x = x + toast.padding,
+                        .y = y + toast.padding,
+                    },
+                    0,
+                    scale,
                     rl.Color{
                         .r = 255,
                         .g = 255,
@@ -171,7 +181,6 @@ pub const ToastManager = struct {
                 );
             }
 
-            const image_offset: f32 = if (toast.texture != null) 70 else 0;
             const text_x = x + toast.padding + image_offset;
 
             // Draw title if exists

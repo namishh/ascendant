@@ -51,10 +51,18 @@ const GameState = struct {
                 null, // image path
                 "Achievement!", // title
                 "rare", // priority (can be null)
-                "You did it!", // message
+                "SOME REALLY LONG TEXT SHOULD BE WRAPPED!", // message
             );
         }
 
+        if (rl.isKeyPressed(.left_alt)) {
+            try self.toastmanager.show(
+                "assets/hearts.png", // image path
+                "Uh oh!",
+                "error", // priority (can be null)
+                "You did fucky wucky!", // message
+            );
+        }
         self.toastmanager.update();
     }
 
