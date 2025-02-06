@@ -51,7 +51,7 @@ const GameState = struct {
                 null, // image path
                 "Achievement!", // title
                 "rare", // priority (can be null)
-                "SOME REALLY LONG TEXT SHOULD BE WRAPPED!", // message
+                "SOME REALLY LONG TEXT!", // message
             );
         }
 
@@ -81,6 +81,9 @@ pub fn main() anyerror!void {
 
     const screenWidth = 1900;
     const screenHeight = 960;
+    const flags = rl.ConfigFlags{ .msaa_4x_hint = true };
+    rl.setConfigFlags(flags);
+
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow();
 
