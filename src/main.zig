@@ -2,6 +2,8 @@ const rl = @import("raylib");
 const std = @import("std");
 const PlayingCard = @import("playingcard.zig").PlayingCard;
 const CardOverlay = @import("cardoverlay.zig").CardOverlay;
+const Cutscene = @import("cutscenes.zig").Cutscene;
+const CutsceneManager = @import("cutscenes.zig").CutsceneManager;
 const ToastManager = @import("toasts.zig").ToastManager;
 const Deck = @import("deck.zig").Deck;
 const Hand = @import("hand.zig").Hand;
@@ -11,6 +13,7 @@ const GameState = struct {
     hand: Hand,
     cardoverlay: CardOverlay,
     toastmanager: ToastManager,
+    cutscenemanager: CutsceneManager,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
@@ -24,11 +27,14 @@ const GameState = struct {
 
         const toastmanager = try ToastManager.init(allocator);
 
+        const cutscenemanager = try CutsceneManager.init(allocator);
+
         return GameState{
             .deck = deck,
             .hand = hand,
             .toastmanager = toastmanager,
             .allocator = allocator,
+            .cutscenemanager = cutscenemanager,
             .cardoverlay = cardoverlay,
         };
     }
@@ -37,6 +43,7 @@ const GameState = struct {
         self.deck.deinit();
         self.hand.deinit();
         self.cardoverlay.deinit();
+        self.cutscenemanager.deinit();
         self.toastmanager.deinit();
     }
 
@@ -45,8 +52,10 @@ const GameState = struct {
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
         if (rl.isKeyPressed(.space)) {
-            try self.deck.reset();
-            try self.hand.drawRandomHand(&self.deck);
+            if (!self.cutscenemanager.is_playing) {
+                try self.deck.reset();
+                try self.hand.drawRandomHand(&self.deck);
+            }
         }
 
         if (rl.isKeyPressed(.left_shift)) {
@@ -76,14 +85,25 @@ const GameState = struct {
             );
         }
 
+        if (rl.isKeyPressed(.m)) {
+            var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Welcome to the game..."));
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "The journey begins..."));
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Press space to continue..."));
+
+            self.cutscenemanager.sequence(cutscenes);
+        }
+
         self.toastmanager.update();
+        self.cutscenemanager.update();
     }
 
-    pub fn draw(self: *GameState) void {
+    pub fn draw(self: *GameState) !void {
         self.deck.draw();
         self.hand.draw();
         self.cardoverlay.draw();
         self.toastmanager.draw();
+        try self.cutscenemanager.draw();
     }
 };
 
@@ -141,7 +161,7 @@ pub fn main() anyerror!void {
             rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.white);
         }
 
-        game_state.draw();
+        try game_state.draw();
 
         rl.drawFPS(10, 10);
     }
