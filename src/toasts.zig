@@ -419,6 +419,29 @@ pub const ToastManager = struct {
             var current_y = y + toast.padding;
 
             for (toast.title_lines.items) |line| {
+                var color = rl.Color{
+                    .r = 255,
+                    .g = 255,
+                    .b = 255,
+                    .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
+                };
+                if (toast.priority) |priority| {
+                    if (std.mem.eql(u8, priority, "error")) {
+                        color = rl.Color{
+                            .r = 237,
+                            .g = 146,
+                            .b = 185,
+                            .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
+                        };
+                    } else if (std.mem.eql(u8, priority, "rare")) {
+                        color = rl.Color{
+                            .r = 145,
+                            .g = 196,
+                            .b = 237,
+                            .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
+                        };
+                    }
+                }
                 rl.drawTextPro(
                     font.?,
                     line.ptr,
@@ -427,12 +450,7 @@ pub const ToastManager = struct {
                     0,
                     24,
                     0,
-                    rl.Color{
-                        .r = 255,
-                        .g = 255,
-                        .b = 255,
-                        .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
-                    },
+                    color,
                 );
                 current_y += 24 + 2;
             }
