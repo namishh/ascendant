@@ -16,6 +16,9 @@ pub const Toast = struct {
     padding: f32 = 10,
     spacing: f32 = 10,
     terminated_image_path: ?[]u8 = null,
+    title_lines: std.ArrayList([:0]const u8),
+    message_lines: std.ArrayList([:0]const u8),
+    y_position: f32 = 0,
 
     pub fn init(allocator: std.mem.Allocator, image_path: ?[]const u8, title: ?[]const u8, priority: ?[]const u8, message: ?[]const u8) !Toast {
         var texture: ?rl.Texture2D = null;
@@ -64,6 +67,8 @@ pub const Toast = struct {
             .message = owned_message,
             .created_at = rl.getTime(),
             .allocator = allocator,
+            .title_lines = std.ArrayList([:0]const u8).init(allocator),
+            .message_lines = std.ArrayList([:0]const u8).init(allocator),
         };
     }
 
@@ -83,12 +88,25 @@ pub const Toast = struct {
         if (self.priority) |priority| {
             self.allocator.free(priority.ptr[0 .. priority.len + 1]);
         }
+        for (self.title_lines.items) |line| {
+            self.allocator.free(line.ptr[0 .. line.len + 1]);
+        }
+        self.title_lines.deinit();
+        for (self.message_lines.items) |line| {
+            self.allocator.free(line.ptr[0 .. line.len + 1]);
+        }
+        self.message_lines.deinit();
+    }
+
+    pub fn getHeight(self: *const Toast) f32 {
+        return self.height + self.spacing;
     }
 };
 
 pub const ToastManager = struct {
     toasts: std.ArrayList(Toast),
     allocator: std.mem.Allocator,
+    max_height: f32,
 
     var font: ?rl.Font = null;
 
@@ -97,6 +115,7 @@ pub const ToastManager = struct {
         return ToastManager{
             .toasts = std.ArrayList(Toast).init(allocator),
             .allocator = allocator,
+            .max_height = @as(f32, @floatFromInt(rl.getScreenHeight())) - 40, // Leave some margin
         };
     }
 
@@ -111,14 +130,143 @@ pub const ToastManager = struct {
         self.toasts.deinit();
     }
 
+    fn wrapText(
+        allocator: std.mem.Allocator,
+        text: []const u8,
+        fontSize: f32,
+        maxWidth: f32,
+    ) !std.ArrayList([:0]const u8) { // Changed return type
+        var lines = std.ArrayList([:0]const u8).init(allocator);
+        errdefer {
+            for (lines.items) |line| {
+                allocator.free(line[0 .. line.len + 1]);
+            }
+            lines.deinit();
+        }
+
+        var words = std.mem.splitScalar(u8, text, ' ');
+
+        var current_line = std.ArrayList(u8).init(allocator);
+        defer current_line.deinit();
+
+        while (words.next()) |word| {
+            if (current_line.items.len == 0) {
+                try current_line.appendSlice(word);
+            } else {
+                const candidate_buf = try allocator.allocSentinel(u8, current_line.items.len + 1 + word.len, 0);
+                defer allocator.free(candidate_buf);
+
+                @memcpy(candidate_buf[0..current_line.items.len], current_line.items);
+                candidate_buf[current_line.items.len] = ' ';
+                @memcpy(candidate_buf[current_line.items.len + 1 ..][0..word.len], word);
+
+                const width = rl.measureTextEx(font.?, candidate_buf, fontSize, 0).x;
+
+                if (width <= maxWidth) {
+                    try current_line.append(' ');
+                    try current_line.appendSlice(word);
+                } else {
+                    // Create null-terminated line
+                    const line_buf = try allocator.allocSentinel(u8, current_line.items.len, 0);
+                    @memcpy(line_buf[0..current_line.items.len], current_line.items);
+                    try lines.append(line_buf[0..current_line.items.len :0]);
+
+                    current_line.clearRetainingCapacity();
+                    try current_line.appendSlice(word);
+                }
+            }
+        }
+
+        // Add the last line if it exists
+        if (current_line.items.len > 0) {
+            const line_buf = try allocator.allocSentinel(u8, current_line.items.len, 0);
+            @memcpy(line_buf[0..current_line.items.len], current_line.items);
+            try lines.append(line_buf[0..current_line.items.len :0]);
+        }
+
+        return lines;
+    }
+
     pub fn show(self: *ToastManager, image_path: ?[]const u8, title: ?[]const u8, priority: ?[]const u8, message: ?[]const u8) !void {
-        const toast = try Toast.init(self.allocator, image_path, title, priority, message);
+        // Create the initial toast
+        var toast = try Toast.init(self.allocator, image_path, title, priority, message);
+        errdefer toast.deinit();
+
+        // Calculate image dimensions for text wrapping
+        var scaled_width: f32 = 0;
+        if (toast.texture) |texture| {
+            const max_image_height: f32 = 80;
+            const scale = max_image_height / @as(f32, @floatFromInt(texture.height));
+            scaled_width = @as(f32, @floatFromInt(texture.width)) * scale;
+        }
+
+        // Calculate available width for text
+        const toast_width: f32 = 300;
+        const available_text_width = toast_width - 3 * toast.padding - scaled_width;
+
+        // Wrap text for both title and message if they exist
+        if (toast.title) |title_text| {
+            toast.title_lines = try wrapText(toast.allocator, title_text, 24, // title font size
+                available_text_width);
+        }
+
+        if (toast.message) |message_text| {
+            toast.message_lines = try wrapText(toast.allocator, message_text, 20, // message font size
+                available_text_width);
+        }
+
+        // Calculate total height needed
+        const title_line_height: f32 = 24 + 2; // font size + line spacing
+        const message_line_height: f32 = 20 + 2;
+        const title_lines_count = @as(f32, @floatFromInt(toast.title_lines.items.len));
+        const message_lines_count = @as(f32, @floatFromInt(toast.message_lines.items.len));
+
+        var content_height: f32 = 0;
+        if (title_lines_count > 0) {
+            content_height += title_lines_count * title_line_height;
+        }
+        if (message_lines_count > 0) {
+            if (title_lines_count > 0) {
+                content_height += 10; // spacing between title and message
+            }
+            content_height += message_lines_count * message_line_height;
+        }
+
+        // Account for image height if present
+        if (toast.texture != null) {
+            const image_height: f32 = 80;
+            content_height = @max(content_height, image_height);
+        }
+
+        // Set final toast height with padding
+        toast.height = content_height + (2 * toast.padding);
+
+        // Calculate initial position
+        var y_pos: f32 = 20; // Initial margin from top
+        for (self.toasts.items) |existing_toast| {
+            y_pos += existing_toast.getHeight();
+        }
+        toast.y_position = y_pos;
+
+        // Check if we need to remove older toasts due to space constraints
+        if (y_pos + toast.getHeight() > self.max_height and self.toasts.items.len > 0) {
+            // Find how many toasts we need to remove
+            var space_needed = y_pos + toast.getHeight() - self.max_height;
+            while (space_needed > 0 and self.toasts.items.len > 0) {
+                const oldest_toast = &self.toasts.items[0];
+                oldest_toast.lifetime = 0; // Mark for removal
+                space_needed -= oldest_toast.getHeight();
+            }
+        }
+
+        // Add the new toast
         try self.toasts.append(toast);
     }
 
     pub fn update(self: *ToastManager) void {
         const current_time = rl.getTime();
         var i: usize = 0;
+
         while (i < self.toasts.items.len) {
             var toast = &self.toasts.items[i];
             const age = @as(f32, @floatCast(current_time - toast.created_at));
@@ -134,13 +282,29 @@ pub const ToastManager = struct {
             if (age >= toast.lifetime) {
                 toast.deinit();
                 _ = self.toasts.orderedRemove(i);
+
+                var j: usize = i;
+                while (j < self.toasts.items.len) : (j += 1) {
+                    var remaining_toast = &self.toasts.items[j];
+                    remaining_toast.y_position -= toast.getHeight();
+                }
                 continue;
             }
 
-            const target_y = @as(f32, @floatFromInt(i)) * (toast.height + toast.spacing) + 20;
-            toast.y_offset += (target_y - toast.y_offset) * 0.1;
-
             i += 1;
+        }
+
+        var current_y: f32 = 20;
+        for (self.toasts.items) |*toast| {
+            const target_y = current_y;
+            toast.y_position += (target_y - toast.y_position) * 0.1;
+            current_y += toast.getHeight();
+            if (current_y > self.max_height) {
+                if (self.toasts.items.len > 1) {
+                    var oldest_toast = &self.toasts.items[0];
+                    oldest_toast.lifetime = 0;
+                }
+            }
         }
     }
 
@@ -149,7 +313,7 @@ pub const ToastManager = struct {
         for (self.toasts.items) |toast| {
             const toast_width: f32 = 300;
             const x = screen_width - toast_width - toast.padding;
-            const y = toast.padding + toast.y_offset;
+            const y = toast.y_position;
 
             rl.drawRectangle(
                 @as(i32, @intFromFloat(x)),
@@ -167,9 +331,10 @@ pub const ToastManager = struct {
             var image_offset: f32 = 0;
 
             if (toast.texture) |texture| {
-                const max_height = toast.height - (toast.padding * 2);
-                const scale = max_height / @as(f32, @floatFromInt(texture.height));
-                image_offset = @as(f32, @floatFromInt(texture.width)) * scale + toast.padding;
+                const max_image_height: f32 = 80;
+                const scale = max_image_height / @as(f32, @floatFromInt(texture.height));
+                const scaled_width = @as(f32, @floatFromInt(texture.width)) * scale;
+                image_offset = scaled_width + toast.padding;
 
                 rl.drawTextureEx(
                     texture,
@@ -189,13 +354,14 @@ pub const ToastManager = struct {
             }
 
             const text_x = x + toast.padding + image_offset;
+            var current_y = y + toast.padding;
 
-            // Draw title if exists
-            if (toast.title) |title| {
+            // Draw title lines
+            for (toast.title_lines.items) |line| {
                 rl.drawTextPro(
                     font.?,
-                    title.ptr,
-                    rl.Vector2{ .x = text_x, .y = y + toast.padding },
+                    line.ptr,
+                    rl.Vector2{ .x = text_x, .y = current_y },
                     rl.Vector2{ .x = 0, .y = 0 },
                     0,
                     24,
@@ -207,13 +373,17 @@ pub const ToastManager = struct {
                         .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
                     },
                 );
+                current_y += 24 + 2;
             }
 
-            if (toast.message) |message| {
+            current_y += 10;
+
+            // Draw message lines
+            for (toast.message_lines.items) |line| {
                 rl.drawTextPro(
                     font.?,
-                    message.ptr,
-                    rl.Vector2{ .x = text_x, .y = y + toast.padding + 25 },
+                    line.ptr,
+                    rl.Vector2{ .x = text_x, .y = current_y },
                     rl.Vector2{ .x = 0, .y = 0 },
                     0,
                     20,
@@ -225,6 +395,7 @@ pub const ToastManager = struct {
                         .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
                     },
                 );
+                current_y += 20 + 2;
             }
         }
     }

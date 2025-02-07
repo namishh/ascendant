@@ -51,7 +51,7 @@ const GameState = struct {
                 null, // image path
                 "Achievement!", // title
                 "rare", // priority (can be null)
-                "SOME REALLY LONG TEXT!", // message
+                "SOME REALLY LONG TEXT! THIS SHOULD IDEALLY BE WRAPPED PLEASE BE WRAPPED I BEG TO YOU", // message
             );
         }
 
@@ -60,7 +60,7 @@ const GameState = struct {
                 "assets/ice.png", // image path
                 "Uh oh!",
                 "error", // priority (can be null)
-                "You did fucky wucky!", // message
+                "You did a small little fucky wucky, dumb idiot!", // message
             );
         }
 
