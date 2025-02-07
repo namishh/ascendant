@@ -188,11 +188,9 @@ pub const ToastManager = struct {
     }
 
     pub fn show(self: *ToastManager, image_path: ?[]const u8, title: ?[]const u8, priority: ?[]const u8, message: ?[]const u8) !void {
-        // Create the initial toast
         var toast = try Toast.init(self.allocator, image_path, title, priority, message);
         errdefer toast.deinit();
 
-        // Calculate image dimensions for text wrapping
         var scaled_width: f32 = 0;
         if (toast.texture) |texture| {
             const max_image_height: f32 = 80;
@@ -200,11 +198,9 @@ pub const ToastManager = struct {
             scaled_width = @as(f32, @floatFromInt(texture.width)) * scale;
         }
 
-        // Calculate available width for text
         const toast_width: f32 = 300;
         const available_text_width = toast_width - 3 * toast.padding - scaled_width;
 
-        // Wrap text for both title and message if they exist
         if (toast.title) |title_text| {
             toast.title_lines = try wrapText(toast.allocator, title_text, 24, // title font size
                 available_text_width);
@@ -215,7 +211,6 @@ pub const ToastManager = struct {
                 available_text_width);
         }
 
-        // Calculate total height needed
         const title_line_height: f32 = 24 + 2; // font size + line spacing
         const message_line_height: f32 = 20 + 2;
         const title_lines_count = @as(f32, @floatFromInt(toast.title_lines.items.len));
