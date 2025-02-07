@@ -14,7 +14,7 @@ pub const Toast = struct {
     fade_speed: f32 = 0.5,
     height: f32 = 100,
     padding: f32 = 10,
-    spacing: f32 = 10,
+    spacing: f32 = 20,
     terminated_image_path: ?[]u8 = null,
     title_lines: std.ArrayList([:0]const u8),
     message_lines: std.ArrayList([:0]const u8),
@@ -107,15 +107,63 @@ pub const ToastManager = struct {
     toasts: std.ArrayList(Toast),
     allocator: std.mem.Allocator,
     max_height: f32,
+    shader: rl.Shader,
+    resolution_loc: c_int,
+    opacity_loc: c_int,
+    position_loc: c_int,
+    color1_loc: c_int,
+    color2_loc: c_int,
+    scale_loc: c_int,
+    wood_shader: rl.Shader, // New wood shader
+    wood_resolution_loc: c_int, // Uniform location for wood shader
+    wood_opacity_loc: c_int, // Uniform location for wood shader
+    wood_position_loc: c_int, // Uniform location for wood shader
 
     var font: ?rl.Font = null;
 
     pub fn init(allocator: std.mem.Allocator) !ToastManager {
         font = try rl.loadFontEx("assets/font.ttf", 32, null);
+
+        const fsPath = "src/shaders/checkerboard.fs";
+        const shader: rl.Shader = try rl.loadShader(null, fsPath);
+
+        const resolution_loc = rl.getShaderLocation(shader, "resolution");
+        const opacity_loc = rl.getShaderLocation(shader, "opacity");
+        const position_loc = rl.getShaderLocation(shader, "position");
+        const color1_loc = rl.getShaderLocation(shader, "color1");
+        const color2_loc = rl.getShaderLocation(shader, "color2");
+        const scale_loc = rl.getShaderLocation(shader, "scale");
+
+        const color1 = rl.Vector4{ .x = 137 / 255, .y = 160 / 255, .z = 60 / 255, .w = 1.0 };
+        const color2 = rl.Vector4{ .x = 0.2862, .y = 0.207, .z = 0.164, .w = 1.0 };
+        rl.setShaderValue(shader, color1_loc, &color1, .vec4);
+        rl.setShaderValue(shader, color2_loc, &color2, .vec4);
+
+        const scale: f32 = 20.0;
+        rl.setShaderValue(shader, scale_loc, &scale, .float);
+
+        // Load wood shader
+        const woodFsPath = "src/shaders/wood.fs";
+        const wood_shader: rl.Shader = try rl.loadShader(null, woodFsPath);
+        const wood_resolution_loc = rl.getShaderLocation(wood_shader, "resolution");
+        const wood_opacity_loc = rl.getShaderLocation(wood_shader, "opacity");
+        const wood_position_loc = rl.getShaderLocation(wood_shader, "position");
+
         return ToastManager{
             .toasts = std.ArrayList(Toast).init(allocator),
             .allocator = allocator,
             .max_height = @as(f32, @floatFromInt(rl.getScreenHeight())) - 40, // Leave some margin
+            .shader = shader,
+            .resolution_loc = resolution_loc,
+            .opacity_loc = opacity_loc,
+            .position_loc = position_loc,
+            .color1_loc = color1_loc,
+            .color2_loc = color2_loc,
+            .scale_loc = scale_loc,
+            .wood_shader = wood_shader,
+            .wood_resolution_loc = wood_resolution_loc,
+            .wood_opacity_loc = wood_opacity_loc,
+            .wood_position_loc = wood_position_loc,
         };
     }
 
@@ -124,6 +172,8 @@ pub const ToastManager = struct {
             rl.unloadFont(f);
             font = null;
         }
+        rl.unloadShader(self.shader);
+        rl.unloadShader(self.wood_shader); // Unload wood shader
         for (self.toasts.items) |*toast| {
             toast.deinit();
         }
@@ -310,18 +360,35 @@ pub const ToastManager = struct {
             const x = screen_width - toast_width - toast.padding;
             const y = toast.y_position;
 
-            rl.drawRectangle(
-                @as(i32, @intFromFloat(x)),
-                @as(i32, @intFromFloat(y)),
-                @as(i32, @intFromFloat(toast_width)),
-                @as(i32, @intFromFloat(toast.height)),
-                rl.Color{
-                    .r = 0,
-                    .g = 0,
-                    .b = 0,
-                    .a = @as(u8, @intFromFloat(180.0 * toast.opacity)),
-                },
-            );
+            const border_padding: f32 = 6;
+            const border_x = x - border_padding;
+            const border_y = y - border_padding;
+            const border_width = toast_width + 2 * border_padding;
+            const border_height = toast.height + 2 * border_padding;
+
+            const wood_resolution = rl.Vector2{ .x = border_width, .y = border_height };
+            const wood_position = rl.Vector2{ .x = border_x, .y = border_y };
+            const wood_opacity = toast.opacity; // Fade border with toast
+
+            rl.setShaderValue(self.wood_shader, self.wood_resolution_loc, &wood_resolution, .vec2);
+            rl.setShaderValue(self.wood_shader, self.wood_opacity_loc, &wood_opacity, .float);
+            rl.setShaderValue(self.wood_shader, self.wood_position_loc, &wood_position, .vec2);
+
+            rl.beginShaderMode(self.wood_shader);
+            rl.drawRectangle(@as(i32, @intFromFloat(border_x)), @as(i32, @intFromFloat(border_y)), @as(i32, @intFromFloat(border_width)), @as(i32, @intFromFloat(border_height)), rl.Color.white);
+            rl.endShaderMode();
+
+            const resolution = rl.Vector2{ .x = toast_width, .y = toast.height };
+            const position = rl.Vector2{ .x = x, .y = y };
+            const opacity = toast.opacity;
+
+            rl.setShaderValue(self.shader, self.resolution_loc, &resolution, .vec2);
+            rl.setShaderValue(self.shader, self.opacity_loc, &opacity, .float);
+            rl.setShaderValue(self.shader, self.position_loc, &position, .vec2);
+
+            rl.beginShaderMode(self.shader);
+            rl.drawRectangle(@as(i32, @intFromFloat(x)), @as(i32, @intFromFloat(y)), @as(i32, @intFromFloat(toast_width)), @as(i32, @intFromFloat(toast.height)), rl.Color.white);
+            rl.endShaderMode();
 
             var image_offset: f32 = 0;
 
@@ -351,7 +418,6 @@ pub const ToastManager = struct {
             const text_x = x + toast.padding + image_offset;
             var current_y = y + toast.padding;
 
-            // Draw title lines
             for (toast.title_lines.items) |line| {
                 rl.drawTextPro(
                     font.?,
@@ -373,7 +439,6 @@ pub const ToastManager = struct {
 
             current_y += 10;
 
-            // Draw message lines
             for (toast.message_lines.items) |line| {
                 rl.drawTextPro(
                     font.?,

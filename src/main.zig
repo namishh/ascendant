@@ -45,8 +45,11 @@ const GameState = struct {
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
         if (rl.isKeyPressed(.space)) {
-            // try self.deck.reset();
-            // try self.hand.drawRandomHand(&self.deck);
+            try self.deck.reset();
+            try self.hand.drawRandomHand(&self.deck);
+        }
+
+        if (rl.isKeyPressed(.left_shift)) {
             try self.toastmanager.show(
                 null, // image path
                 "Achievement!", // title
