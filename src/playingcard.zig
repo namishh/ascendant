@@ -335,10 +335,12 @@ pub const PlayingCard = struct {
                 );
             }
         } else {
-            const color = if (std.mem.eql(u8, self.suit, "water") or std.mem.eql(u8, self.suit, "ice"))
-                rl.Color.sky_blue
-            else
-                rl.Color.orange;
+            var color = rl.Color.sky_blue;
+            if (std.mem.eql(u8, self.suit, "fire")) {
+                color = rl.Color.orange;
+            } else if (std.mem.eql(u8, self.suit, "water")) {
+                color = rl.Color.blue;
+            }
 
             const fontSize: f32 = 28;
 

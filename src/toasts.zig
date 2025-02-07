@@ -216,7 +216,7 @@ pub const ToastManager = struct {
                     rl.Vector2{ .x = text_x, .y = y + toast.padding + 25 },
                     rl.Vector2{ .x = 0, .y = 0 },
                     0,
-                    16,
+                    20,
                     0,
                     rl.Color{
                         .r = 255,

@@ -45,8 +45,8 @@ const GameState = struct {
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
         if (rl.isKeyPressed(.space)) {
-            try self.deck.reset();
-            try self.hand.drawRandomHand(&self.deck);
+            // try self.deck.reset();
+            // try self.hand.drawRandomHand(&self.deck);
             try self.toastmanager.show(
                 null, // image path
                 "Achievement!", // title
@@ -63,6 +63,16 @@ const GameState = struct {
                 "You did fucky wucky!", // message
             );
         }
+
+        if (rl.isKeyPressed(.left_control)) {
+            try self.toastmanager.show(
+                "assets/water.png", // image path
+                "normal title",
+                "normal", // priority (can be null)
+                "well you are fine just continue with the game", // message
+            );
+        }
+
         self.toastmanager.update();
     }
 
