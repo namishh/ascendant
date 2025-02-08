@@ -5,11 +5,12 @@ pub const Cutscene = struct {
     texture: ?rl.Texture2D,
     character_name: ?[:0]const u8,
     dialogue: ?[:0]const u8,
+    color: rl.Color,
     terminated_image_path: ?[]u8 = null,
     dialogue_lines: std.ArrayList([:0]const u8),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, image_path: ?[]const u8, character_name: ?[]const u8, dialogue: ?[]const u8) !Cutscene {
+    pub fn init(allocator: std.mem.Allocator, image_path: ?[]const u8, character_name: ?[]const u8, dialogue: ?[]const u8, color: ?rl.Color) !Cutscene {
         var texture: ?rl.Texture2D = null;
         var terminated_image_path: ?[]u8 = null;
 
@@ -47,6 +48,7 @@ pub const Cutscene = struct {
             .character_name = owned_character_name,
             .dialogue = owned_dialogue,
             .allocator = allocator,
+            .color = color orelse rl.Color.white,
             .dialogue_lines = std.ArrayList([:0]const u8).init(allocator),
         };
     }
@@ -94,6 +96,7 @@ pub const CutsceneManager = struct {
         font = try rl.loadFontEx("assets/font.ttf", 32, null);
 
         const shader = try rl.loadShader(null, "src/shaders/overlay.fs");
+
         const resolution_loc = rl.getShaderLocation(shader, "resolution");
         const opacity_loc = rl.getShaderLocation(shader, "opacity");
         const position_loc = rl.getShaderLocation(shader, "position");
@@ -109,7 +112,7 @@ pub const CutsceneManager = struct {
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const wood_shader = try rl.loadShader(null, "src/shaders/wood_border.fs");
+        const wood_shader = try rl.loadShader(null, "src/shaders/wood.fs");
         const wood_resolution_loc = rl.getShaderLocation(wood_shader, "resolution");
         const wood_opacity_loc = rl.getShaderLocation(wood_shader, "opacity");
         const wood_position_loc = rl.getShaderLocation(wood_shader, "position");
@@ -188,13 +191,12 @@ pub const CutsceneManager = struct {
         rl.setShaderValue(self.shader, self.position_loc, &overlay_position, .vec2);
 
         rl.beginShaderMode(self.shader);
-        rl.drawRectangle(0, 0, @as(i32, @intFromFloat(screen_width)), @as(i32, @intFromFloat(screen_height)), rl.Color.white);
         rl.endShaderMode();
 
-        const box_width: f32 = screen_width * 0.8;
-        const box_height: f32 = screen_height * 0.4;
-        const box_x: f32 = (screen_width - box_width) / 2;
-        const box_y: f32 = screen_height * 0.5 - box_height / 2;
+        const box_width: f32 = screen_width * 1;
+        const box_height: f32 = screen_height * 0.34;
+        const box_x: f32 = (screen_width - box_width);
+        const box_y: f32 = screen_height - box_height;
 
         const border_height: f32 = 10;
         const wood_resolution = rl.Vector2{ .x = box_width, .y = border_height };
@@ -209,7 +211,7 @@ pub const CutsceneManager = struct {
         rl.drawRectangle(@as(i32, @intFromFloat(box_x)), @as(i32, @intFromFloat(box_y)), @as(i32, @intFromFloat(box_width)), @as(i32, @intFromFloat(border_height)), rl.Color.white);
         rl.endShaderMode();
 
-        rl.drawRectangle(@as(i32, @intFromFloat(box_x)), @as(i32, @intFromFloat(box_y + border_height)), @as(i32, @intFromFloat(box_width)), @as(i32, @intFromFloat(box_height - border_height)), rl.Color.white);
+        rl.drawRectangleRec(rl.Rectangle{ .x = box_x, .y = box_y + 10, .width = box_width, .height = box_height - 10 }, rl.Color{ .r = 199, .g = 179, .b = 161, .a = 255 });
 
         var text_start_x: f32 = box_x + 20;
         const text_start_y: f32 = box_y + border_height + 20;
@@ -217,15 +219,31 @@ pub const CutsceneManager = struct {
         var image_offset_x: f32 = 0;
 
         if (cutscene.texture) |texture| {
-            const card_size: f32 = box_height - 40;
-            image_offset_x = card_size + 20;
+            const texture_aspect_ratio = @as(f32, @floatFromInt(texture.width)) / @as(f32, @floatFromInt(texture.height));
 
-            rl.drawTexturePro(texture, rl.Rectangle{ .x = 0, .y = 0, .width = @as(f32, @floatFromInt(texture.width)), .height = @as(f32, @floatFromInt(texture.height)) }, rl.Rectangle{ .x = box_x + 20, .y = box_y + border_height + 20, .width = card_size, .height = card_size }, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+            const scale_factor: f32 = 1.25;
+
+            const card_width: f32 = (box_height - 40) * scale_factor;
+            const card_height: f32 = card_width / texture_aspect_ratio;
+
+            const card_x = 0; // Adjust x for protrusion
+
+            const card_y = box_y + border_height + 20 - (card_height - (box_height - 40)) / 2; // Adjust y for protrusion
+
+            rl.drawTexturePro(
+                texture,
+                rl.Rectangle{ .x = 0, .y = 0, .width = @as(f32, @floatFromInt(texture.width)), .height = @as(f32, @floatFromInt(texture.height)) },
+                rl.Rectangle{ .x = card_x, .y = card_y, .width = card_width, .height = card_height },
+                rl.Vector2{ .x = 0, .y = 0 },
+                0,
+                rl.Color.white,
+            );
+
+            image_offset_x = card_width + 20; // Adjust offset based on the scaled image width
             text_start_x += image_offset_x;
         }
-
         if (cutscene.character_name) |name| {
-            rl.drawTextPro(font.?, name.ptr, rl.Vector2{ .x = text_start_x, .y = text_start_y - 30 }, rl.Vector2{ .x = 0, .y = 0 }, 0, 32, 0, rl.Color.black);
+            rl.drawTextPro(font.?, name.ptr, rl.Vector2{ .x = text_start_x, .y = text_start_y - 10 }, rl.Vector2{ .x = 0, .y = 0 }, 0, 50, 0, cutscene.color);
         }
 
         if (cutscene.dialogue) |dialogue_text| {
@@ -272,9 +290,9 @@ pub const CutsceneManager = struct {
                 try cutscene.dialogue_lines.append(final_line[0..current_line.items.len :0]);
             }
 
-            var current_y = text_start_y;
+            var current_y = text_start_y + 40;
             for (cutscene.dialogue_lines.items) |line| {
-                rl.drawTextPro(font.?, line.ptr, rl.Vector2{ .x = text_start_x, .y = current_y }, rl.Vector2{ .x = 0, .y = 0 }, 0, 20, 0, rl.Color.black);
+                rl.drawTextPro(font.?, line.ptr, rl.Vector2{ .x = text_start_x, .y = current_y }, rl.Vector2{ .x = 0, .y = 0 }, 0, 32, 0, rl.Color.black);
                 current_y += 22;
             }
         }

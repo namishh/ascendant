@@ -87,9 +87,9 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.m)) {
             var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Welcome to the game..."));
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "The journey begins..."));
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Press space to continue..."));
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Welcome to the game...", rl.Color.blue));
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "The journey begins...", rl.Color.blue));
+            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Press space to continue...", rl.Color.blue));
 
             self.cutscenemanager.sequence(cutscenes);
         }
