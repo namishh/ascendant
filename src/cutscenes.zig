@@ -1,31 +1,16 @@
 const std = @import("std");
 const rl = @import("raylib");
+const TextureCache = @import("texture-cache.zig").TextureCache;
 
 pub const Cutscene = struct {
     texture: ?rl.Texture2D,
     character_name: ?[:0]const u8,
     dialogue: ?[:0]const u8,
     color: rl.Color,
-    terminated_image_path: ?[]u8 = null,
     dialogue_lines: std.ArrayList([:0]const u8),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, image_path: ?[]const u8, character_name: ?[]const u8, dialogue: ?[]const u8, color: ?rl.Color) !Cutscene {
-        var texture: ?rl.Texture2D = null;
-        var terminated_image_path: ?[]u8 = null;
-
-        if (image_path) |path| {
-            terminated_image_path = try allocator.alloc(u8, path.len + 1);
-            std.mem.copyForwards(u8, terminated_image_path.?, path);
-            terminated_image_path.?[path.len] = 0;
-
-            const loaded_texture = rl.loadTexture(@as([*:0]const u8, @ptrCast(terminated_image_path.?.ptr))) catch |err| {
-                std.log.err("Failed to load texture: {s}", .{path});
-                return err;
-            };
-            texture = loaded_texture;
-        }
-
+    pub fn init(allocator: std.mem.Allocator, texture: rl.Texture2D, character_name: ?[]const u8, dialogue: ?[]const u8, color: ?rl.Color) !Cutscene {
         var owned_character_name: ?[:0]const u8 = null;
         var owned_dialogue: ?[:0]const u8 = null;
 
@@ -44,7 +29,6 @@ pub const Cutscene = struct {
 
         return Cutscene{
             .texture = texture,
-            .terminated_image_path = terminated_image_path,
             .character_name = owned_character_name,
             .dialogue = owned_dialogue,
             .allocator = allocator,
@@ -54,12 +38,6 @@ pub const Cutscene = struct {
     }
 
     pub fn deinit(self: *Cutscene) void {
-        if (self.texture) |texture| {
-            rl.unloadTexture(texture);
-        }
-        if (self.terminated_image_path) |tip| {
-            self.allocator.free(tip);
-        }
         if (self.character_name) |name| {
             self.allocator.free(name.ptr[0 .. name.len + 1]);
         }
@@ -89,6 +67,7 @@ pub const CutsceneManager = struct {
     wood_resolution_loc: c_int,
     wood_opacity_loc: c_int,
     wood_position_loc: c_int,
+    resource_cache: TextureCache,
 
     var font: ?rl.Font = null;
 
@@ -96,7 +75,6 @@ pub const CutsceneManager = struct {
         font = try rl.loadFontEx("assets/font.ttf", 32, null);
 
         const shader = try rl.loadShader(null, "src/shaders/overlay.fs");
-
         const resolution_loc = rl.getShaderLocation(shader, "resolution");
         const opacity_loc = rl.getShaderLocation(shader, "opacity");
         const position_loc = rl.getShaderLocation(shader, "position");
@@ -133,6 +111,7 @@ pub const CutsceneManager = struct {
             .wood_resolution_loc = wood_resolution_loc,
             .wood_opacity_loc = wood_opacity_loc,
             .wood_position_loc = wood_position_loc,
+            .resource_cache = TextureCache.init(allocator),
         };
     }
 
@@ -147,6 +126,16 @@ pub const CutsceneManager = struct {
             cutscene.deinit();
         }
         self.cutscenes.deinit();
+        self.resource_cache.deinit();
+    }
+
+    pub fn preloadResources(self: *CutsceneManager) !void {
+        try self.resource_cache.preloadTexture("assets/commander.png");
+    }
+
+    pub fn createCutscene(self: *CutsceneManager, texture_path: []const u8, character_name: []const u8, dialogue: []const u8, color: rl.Color) !Cutscene {
+        const texture = self.resource_cache.getTexture(texture_path) orelse return error.TextureNotPreloaded;
+        return try Cutscene.init(self.allocator, texture, character_name, dialogue, color);
     }
 
     pub fn sequence(self: *CutsceneManager, cutscene_list: std.ArrayList(Cutscene)) void {
@@ -220,15 +209,11 @@ pub const CutsceneManager = struct {
 
         if (cutscene.texture) |texture| {
             const texture_aspect_ratio = @as(f32, @floatFromInt(texture.width)) / @as(f32, @floatFromInt(texture.height));
-
             const scale_factor: f32 = 1.25;
-
             const card_width: f32 = (box_height - 40) * scale_factor;
             const card_height: f32 = card_width / texture_aspect_ratio;
-
-            const card_x = 0; // Adjust x for protrusion
-
-            const card_y = box_y + border_height + 20 - (card_height - (box_height - 40)) / 2; // Adjust y for protrusion
+            const card_x = 0;
+            const card_y = box_y + border_height + 20 - (card_height - (box_height - 40)) / 2;
 
             rl.drawTexturePro(
                 texture,
@@ -239,9 +224,10 @@ pub const CutsceneManager = struct {
                 rl.Color.white,
             );
 
-            image_offset_x = card_width + 20; // Adjust offset based on the scaled image width
+            image_offset_x = card_width + 20;
             text_start_x += image_offset_x;
         }
+
         if (cutscene.character_name) |name| {
             rl.drawTextPro(font.?, name.ptr, rl.Vector2{ .x = text_start_x, .y = text_start_y - 10 }, rl.Vector2{ .x = 0, .y = 0 }, 0, 50, 0, cutscene.color);
         }

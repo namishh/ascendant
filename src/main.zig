@@ -27,7 +27,8 @@ const GameState = struct {
 
         const toastmanager = try ToastManager.init(allocator);
 
-        const cutscenemanager = try CutsceneManager.init(allocator);
+        var cutscenemanager = try CutsceneManager.init(allocator);
+        try cutscenemanager.preloadResources();
 
         return GameState{
             .deck = deck,
@@ -87,10 +88,8 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.m)) {
             var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Welcome to the game...", rl.Color.blue));
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "The journey begins...", rl.Color.blue));
-            try cutscenes.append(try Cutscene.init(self.allocator, "assets/commander.png", "Commander", "Press space to continue...", rl.Color.blue));
-
+            const cutscene = try self.cutscenemanager.createCutscene("assets/commander.png", "Commander", "Press space to continue...", rl.Color.dark_blue);
+            try cutscenes.append(cutscene);
             self.cutscenemanager.sequence(cutscenes);
         }
 
