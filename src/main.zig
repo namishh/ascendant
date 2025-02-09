@@ -88,8 +88,11 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.m)) {
             var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
-            const cutscene = try self.cutscenemanager.createCutscene("assets/commander.png", "Commander", "Press space to continue...", rl.Color.dark_blue);
+            const cutscene = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "Welcome to ascendant! I am Commander, your helper and guide throughout this mission", rl.Color.dark_blue);
             try cutscenes.append(cutscene);
+
+            const cutscene2 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Katlyn", "Press space to continue...", rl.Color.dark_blue);
+            try cutscenes.append(cutscene2);
             self.cutscenemanager.sequence(cutscenes);
         }
 

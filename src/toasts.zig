@@ -122,7 +122,7 @@ pub const ToastManager = struct {
     var font: ?rl.Font = null;
 
     pub fn init(allocator: std.mem.Allocator) !ToastManager {
-        font = try rl.loadFontEx("assets/font.ttf", 32, null);
+        font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
         const fsPath = "src/shaders/checkerboard.fs";
         const shader: rl.Shader = try rl.loadShader(null, fsPath);

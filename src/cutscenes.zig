@@ -61,7 +61,6 @@ pub const CutsceneManager = struct {
     opacity_loc: c_int,
     position_loc: c_int,
     color1_loc: c_int,
-    color2_loc: c_int,
     scale_loc: c_int,
     wood_shader: rl.Shader,
     wood_resolution_loc: c_int,
@@ -72,20 +71,17 @@ pub const CutsceneManager = struct {
     var font: ?rl.Font = null;
 
     pub fn init(allocator: std.mem.Allocator) !CutsceneManager {
-        font = try rl.loadFontEx("assets/font.ttf", 32, null);
+        font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
         const shader = try rl.loadShader(null, "src/shaders/overlay.fs");
         const resolution_loc = rl.getShaderLocation(shader, "resolution");
         const opacity_loc = rl.getShaderLocation(shader, "opacity");
         const position_loc = rl.getShaderLocation(shader, "position");
         const color1_loc = rl.getShaderLocation(shader, "color1");
-        const color2_loc = rl.getShaderLocation(shader, "color2");
         const scale_loc = rl.getShaderLocation(shader, "scale");
 
-        const color1 = rl.Vector4{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.5 };
-        const color2 = rl.Vector4{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.5 };
+        const color1 = rl.Vector4{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.8 };
         rl.setShaderValue(shader, color1_loc, &color1, .vec4);
-        rl.setShaderValue(shader, color2_loc, &color2, .vec4);
 
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
@@ -105,7 +101,6 @@ pub const CutsceneManager = struct {
             .opacity_loc = opacity_loc,
             .position_loc = position_loc,
             .color1_loc = color1_loc,
-            .color2_loc = color2_loc,
             .scale_loc = scale_loc,
             .wood_shader = wood_shader,
             .wood_resolution_loc = wood_resolution_loc,
@@ -130,7 +125,7 @@ pub const CutsceneManager = struct {
     }
 
     pub fn preloadResources(self: *CutsceneManager) !void {
-        try self.resource_cache.preloadTexture("assets/commander.png");
+        try self.resource_cache.preloadTexture("assets/valkyrie.png");
     }
 
     pub fn createCutscene(self: *CutsceneManager, texture_path: []const u8, character_name: []const u8, dialogue: []const u8, color: rl.Color) !Cutscene {
@@ -180,6 +175,7 @@ pub const CutsceneManager = struct {
         rl.setShaderValue(self.shader, self.position_loc, &overlay_position, .vec2);
 
         rl.beginShaderMode(self.shader);
+        rl.drawRectangle(0, 0, rl.getScreenWidth(), rl.getScreenWidth(), rl.Color.white);
         rl.endShaderMode();
 
         const box_width: f32 = screen_width * 1;

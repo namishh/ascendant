@@ -58,7 +58,7 @@ pub const PlayingCard = struct {
 
         allocator = std.heap.page_allocator;
 
-        font = try rl.loadFontEx("assets/font.ttf", 32, null);
+        font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
         card_back_texture = try rl.loadTexture("assets/card-back.jpeg");
 
