@@ -6,11 +6,13 @@ const Cutscene = @import("cutscenes.zig").Cutscene;
 const CutsceneManager = @import("cutscenes.zig").CutsceneManager;
 const ToastManager = @import("toasts.zig").ToastManager;
 const Deck = @import("deck.zig").Deck;
+const PowerCards = @import("powercards.zig").PowerCards;
 const Hand = @import("hand.zig").Hand;
 
 const GameState = struct {
     deck: Deck,
     hand: Hand,
+    power_cards: PowerCards,
     cardoverlay: CardOverlay,
     toastmanager: ToastManager,
     cutscenemanager: CutsceneManager,
@@ -23,16 +25,18 @@ const GameState = struct {
         var hand = Hand.init(allocator);
         try hand.drawRandomHand(&deck);
 
+        var power_cards = try PowerCards.init(allocator);
+        try power_cards.loadResources();
+
         const cardoverlay = CardOverlay.init();
-
         const toastmanager = try ToastManager.init(allocator);
-
         var cutscenemanager = try CutsceneManager.init(allocator);
         try cutscenemanager.preloadResources();
 
         return GameState{
             .deck = deck,
             .hand = hand,
+            .power_cards = power_cards,
             .toastmanager = toastmanager,
             .allocator = allocator,
             .cutscenemanager = cutscenemanager,
@@ -43,6 +47,7 @@ const GameState = struct {
     pub fn deinit(self: *GameState) void {
         self.deck.deinit();
         self.hand.deinit();
+        self.power_cards.deinit();
         self.cardoverlay.deinit();
         self.cutscenemanager.deinit();
         self.toastmanager.deinit();
@@ -102,6 +107,19 @@ const GameState = struct {
             self.cutscenemanager.sequence(cutscenes);
         }
 
+        if (rl.isKeyPressed(.q)) {
+            try self.power_cards.addCard(&self.deck);
+        }
+
+        if (rl.isKeyPressed(.r)) {
+            self.power_cards.reset();
+        }
+
+        if (rl.isKeyPressed(.one)) _ = self.power_cards.activateCard(0);
+        if (rl.isKeyPressed(.two)) _ = self.power_cards.activateCard(1);
+        if (rl.isKeyPressed(.three)) _ = self.power_cards.activateCard(2);
+        if (rl.isKeyPressed(.four)) _ = self.power_cards.activateCard(3);
+
         self.toastmanager.update();
         self.cutscenemanager.update();
     }
@@ -111,6 +129,7 @@ const GameState = struct {
         self.hand.draw();
         self.cardoverlay.draw();
         self.toastmanager.draw();
+        self.power_cards.draw();
         try self.cutscenemanager.draw();
     }
 };

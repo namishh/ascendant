@@ -1,6 +1,6 @@
 short term goals
 - [x] make a fully working notifcation system
-- [ ] seperate cards into normal cards and power cards
+- [x] seperate cards into normal cards and power cards
 - [x] make a cutscene system
 - [ ] make the background shader tweakable to change during the game
 - [ ] game menu

@@ -42,7 +42,7 @@ pub const Hand = struct {
 
         var i: usize = 0;
         while (i < num_cards) : (i += 1) {
-            if (deck.drawCard()) |card| {
+            if (try deck.drawCard()) |card| {
                 var new_card = card;
                 const progress = @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(num_cards - 1));
                 const angle = -15.0 + progress * 30.0;

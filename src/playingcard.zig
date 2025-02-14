@@ -27,6 +27,8 @@ pub const PlayingCard = struct {
     target_hover: f32 = 0.0,
     hover_speed: f32 = 0.2,
 
+    is_power_card: bool = false,
+
     is_hovered: bool = false,
     is_current: bool = false,
     hover_offset: f32 = 0.0,
@@ -41,6 +43,7 @@ pub const PlayingCard = struct {
     var face_card_textures: ?std.StringHashMap(rl.Texture2D) = null;
     var joker_textures: ?std.StringHashMap(rl.Texture2D) = null;
     var card_back_texture: ?rl.Texture2D = null;
+    var card_back_power_texture: ?rl.Texture2D = null;
     var allocator: std.mem.Allocator = undefined;
 
     fn isFaceCard(value: []const u8) bool {
@@ -61,6 +64,7 @@ pub const PlayingCard = struct {
         font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
         card_back_texture = try rl.loadTexture("assets/card-back.jpeg");
+        card_back_power_texture = try rl.loadTexture("assets/power-card.jpg");
 
         suit_textures = std.StringHashMap(rl.Texture2D).init(allocator);
         face_card_textures = std.StringHashMap(rl.Texture2D).init(allocator);
@@ -109,6 +113,11 @@ pub const PlayingCard = struct {
         if (card_back_texture) |texture| {
             rl.unloadTexture(texture);
             card_back_texture = null;
+        }
+
+        if (card_back_power_texture) |texture| {
+            rl.unloadTexture(texture);
+            card_back_power_texture = null;
         }
 
         if (suit_textures) |*textures| {
@@ -417,7 +426,7 @@ pub const PlayingCard = struct {
     }
 
     fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
-        const texture = card_back_texture.?;
+        const texture = if (self.is_power_card) card_back_power_texture.? else card_back_texture.?;
         const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
 
         const current_width = self.width - x_offset * 2;

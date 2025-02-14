@@ -2,4 +2,6 @@
 current progress -
 </samp>
 
-![img](https://i.imgur.com/OF6XGzp.png)
+<br>
+
+![img](https://i.imgur.com/P8eVg80.png)
