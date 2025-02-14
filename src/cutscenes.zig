@@ -62,10 +62,7 @@ pub const CutsceneManager = struct {
     position_loc: c_int,
     color1_loc: c_int,
     scale_loc: c_int,
-    wood_shader: rl.Shader,
-    wood_resolution_loc: c_int,
-    wood_opacity_loc: c_int,
-    wood_position_loc: c_int,
+    wood_texture: rl.Texture2D,
     resource_cache: TextureCache,
 
     var font: ?rl.Font = null;
@@ -86,10 +83,7 @@ pub const CutsceneManager = struct {
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const wood_shader = try rl.loadShader(null, "src/shaders/wood.fs");
-        const wood_resolution_loc = rl.getShaderLocation(wood_shader, "resolution");
-        const wood_opacity_loc = rl.getShaderLocation(wood_shader, "opacity");
-        const wood_position_loc = rl.getShaderLocation(wood_shader, "position");
+        const wood_texture = try rl.loadTexture("assets/wood.png");
 
         return CutsceneManager{
             .cutscenes = std.ArrayList(Cutscene).init(allocator),
@@ -102,10 +96,7 @@ pub const CutsceneManager = struct {
             .position_loc = position_loc,
             .color1_loc = color1_loc,
             .scale_loc = scale_loc,
-            .wood_shader = wood_shader,
-            .wood_resolution_loc = wood_resolution_loc,
-            .wood_opacity_loc = wood_opacity_loc,
-            .wood_position_loc = wood_position_loc,
+            .wood_texture = wood_texture,
             .resource_cache = TextureCache.init(allocator),
         };
     }
@@ -116,7 +107,7 @@ pub const CutsceneManager = struct {
             font = null;
         }
         rl.unloadShader(self.shader);
-        rl.unloadShader(self.wood_shader);
+        rl.unloadTexture(self.wood_texture);
         for (self.cutscenes.items) |*cutscene| {
             cutscene.deinit();
         }
@@ -182,19 +173,45 @@ pub const CutsceneManager = struct {
         const box_height: f32 = screen_height * 0.34;
         const box_x: f32 = (screen_width - box_width);
         const box_y: f32 = screen_height - box_height;
+        const border_height: f32 = 24;
 
-        const border_height: f32 = 10;
-        const wood_resolution = rl.Vector2{ .x = box_width, .y = border_height };
-        const wood_position = rl.Vector2{ .x = box_x, .y = box_y };
-        const wood_opacity: f32 = 1.0;
+        // Calculate number of tiles needed
+        const texture_width = @as(f32, @floatFromInt(self.wood_texture.width));
+        const tiles_x = @ceil(box_width / texture_width);
 
-        rl.setShaderValue(self.wood_shader, self.wood_resolution_loc, &wood_resolution, .vec2);
-        rl.setShaderValue(self.wood_shader, self.wood_opacity_loc, &wood_opacity, .float);
-        rl.setShaderValue(self.wood_shader, self.wood_position_loc, &wood_position, .vec2);
+        var tx: f32 = 0;
+        while (tx < tiles_x) : (tx += 1) {
+            const draw_x = box_x + (tx * texture_width);
 
-        rl.beginShaderMode(self.wood_shader);
-        rl.drawRectangle(@as(i32, @intFromFloat(box_x)), @as(i32, @intFromFloat(box_y)), @as(i32, @intFromFloat(box_width)), @as(i32, @intFromFloat(border_height)), rl.Color.white);
-        rl.endShaderMode();
+            // Calculate the width of this tile (might be smaller at the edge)
+            const tile_width = @min(texture_width, box_width - (tx * texture_width));
+
+            // Calculate source rectangle (full texture height, but possibly partial width)
+            const source_rect = rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = tile_width,
+                .height = border_height,
+            };
+
+            // Calculate destination rectangle
+            const dest_rect = rl.Rectangle{
+                .x = draw_x,
+                .y = box_y,
+                .width = tile_width,
+                .height = border_height,
+            };
+
+            // Draw the wood texture tile
+            rl.drawTexturePro(
+                self.wood_texture,
+                source_rect,
+                dest_rect,
+                rl.Vector2{ .x = 0, .y = 0 },
+                0,
+                rl.Color.white,
+            );
+        }
 
         rl.drawRectangleRec(rl.Rectangle{ .x = box_x, .y = box_y + 10, .width = box_width, .height = box_height - 10 }, rl.Color{ .r = 199, .g = 179, .b = 161, .a = 255 });
 

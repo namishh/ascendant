@@ -1,12 +1,16 @@
 short term goals
 - [x] make a fully working notifcation system
 - [ ] seperate cards into normal cards and power cards
-- [ ] make a cutscene system
+- [x] make a cutscene system
 - [ ] make the background shader tweakable to change during the game
 - [ ] implement animations for the deck
 - [ ] implement animations for the hand
 - [ ] game menu
 - [x] anti-aliasing (was literally just a flag lmfaoo)
+
+make better ui
+- [ ] notifications
+- [ ] cutscene
 
 long term goals
 - [ ] club penguin jitsu like game

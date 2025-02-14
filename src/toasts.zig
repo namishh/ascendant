@@ -114,10 +114,7 @@ pub const ToastManager = struct {
     color1_loc: c_int,
     color2_loc: c_int,
     scale_loc: c_int,
-    wood_shader: rl.Shader, // New wood shader
-    wood_resolution_loc: c_int, // Uniform location for wood shader
-    wood_opacity_loc: c_int, // Uniform location for wood shader
-    wood_position_loc: c_int, // Uniform location for wood shader
+    wood_texture: rl.Texture2D,
 
     var font: ?rl.Font = null;
 
@@ -142,12 +139,7 @@ pub const ToastManager = struct {
         const scale: f32 = 20.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        // Load wood shader
-        const woodFsPath = "src/shaders/wood.fs";
-        const wood_shader: rl.Shader = try rl.loadShader(null, woodFsPath);
-        const wood_resolution_loc = rl.getShaderLocation(wood_shader, "resolution");
-        const wood_opacity_loc = rl.getShaderLocation(wood_shader, "opacity");
-        const wood_position_loc = rl.getShaderLocation(wood_shader, "position");
+        const wood_texture = try rl.loadTexture("assets/wood.png");
 
         return ToastManager{
             .toasts = std.ArrayList(Toast).init(allocator),
@@ -160,10 +152,7 @@ pub const ToastManager = struct {
             .color1_loc = color1_loc,
             .color2_loc = color2_loc,
             .scale_loc = scale_loc,
-            .wood_shader = wood_shader,
-            .wood_resolution_loc = wood_resolution_loc,
-            .wood_opacity_loc = wood_opacity_loc,
-            .wood_position_loc = wood_position_loc,
+            .wood_texture = wood_texture,
         };
     }
 
@@ -173,7 +162,7 @@ pub const ToastManager = struct {
             font = null;
         }
         rl.unloadShader(self.shader);
-        rl.unloadShader(self.wood_shader); // Unload wood shader
+        rl.unloadTexture(self.wood_texture);
         for (self.toasts.items) |*toast| {
             toast.deinit();
         }
@@ -365,19 +354,55 @@ pub const ToastManager = struct {
             const border_y = y - border_padding;
             const border_width = toast_width + 2 * border_padding;
             const border_height = toast.height + 2 * border_padding;
+            const texture_width = @as(f32, @floatFromInt(self.wood_texture.width));
+            const texture_height = @as(f32, @floatFromInt(self.wood_texture.height));
 
-            const wood_resolution = rl.Vector2{ .x = border_width, .y = border_height };
-            const wood_position = rl.Vector2{ .x = border_x, .y = border_y };
-            const wood_opacity = toast.opacity; // Fade border with toast
+            const tiles_x = @ceil(border_width / texture_width);
+            const tiles_y = @ceil(border_height / texture_height);
 
-            rl.setShaderValue(self.wood_shader, self.wood_resolution_loc, &wood_resolution, .vec2);
-            rl.setShaderValue(self.wood_shader, self.wood_opacity_loc, &wood_opacity, .float);
-            rl.setShaderValue(self.wood_shader, self.wood_position_loc, &wood_position, .vec2);
+            var ty: f32 = 0;
+            while (ty < tiles_y) : (ty += 1) {
+                var tx: f32 = 0;
+                while (tx < tiles_x) : (tx += 1) {
+                    const draw_x = border_x + (tx * texture_width);
+                    const draw_y = border_y + (ty * texture_height);
 
-            rl.beginShaderMode(self.wood_shader);
-            rl.drawRectangle(@as(i32, @intFromFloat(border_x)), @as(i32, @intFromFloat(border_y)), @as(i32, @intFromFloat(border_width)), @as(i32, @intFromFloat(border_height)), rl.Color.white);
-            rl.endShaderMode();
+                    // Calculate the width and height of this tile (might be smaller at edges)
+                    const tile_width = @min(texture_width, border_width - (tx * texture_width));
+                    const tile_height = @min(texture_height, border_height - (ty * texture_height));
 
+                    // Calculate source rectangle (full texture)
+                    const source_rect = rl.Rectangle{
+                        .x = 0,
+                        .y = 0,
+                        .width = tile_width,
+                        .height = tile_height,
+                    };
+
+                    // Calculate destination rectangle
+                    const dest_rect = rl.Rectangle{
+                        .x = draw_x,
+                        .y = draw_y,
+                        .width = tile_width,
+                        .height = tile_height,
+                    };
+
+                    // Draw the wood texture tile with proper opacity
+                    rl.drawTexturePro(
+                        self.wood_texture,
+                        source_rect,
+                        dest_rect,
+                        rl.Vector2{ .x = 0, .y = 0 },
+                        0,
+                        rl.Color{
+                            .r = 255,
+                            .g = 255,
+                            .b = 255,
+                            .a = @as(u8, @intFromFloat(255.0 * toast.opacity)),
+                        },
+                    );
+                }
+            }
             const resolution = rl.Vector2{ .x = toast_width, .y = toast.height };
             const position = rl.Vector2{ .x = x, .y = y };
             const opacity = toast.opacity;
