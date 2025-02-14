@@ -9,6 +9,9 @@ pub const Cutscene = struct {
     color: rl.Color,
     dialogue_lines: std.ArrayList([:0]const u8),
     allocator: std.mem.Allocator,
+    chars_to_show: usize,
+    last_char_time: f64,
+    char_delay: f64,
 
     pub fn init(allocator: std.mem.Allocator, texture: rl.Texture2D, character_name: ?[]const u8, dialogue: ?[]const u8, color: ?rl.Color) !Cutscene {
         var owned_character_name: ?[:0]const u8 = null;
@@ -34,6 +37,9 @@ pub const Cutscene = struct {
             .allocator = allocator,
             .color = color orelse rl.Color.white,
             .dialogue_lines = std.ArrayList([:0]const u8).init(allocator),
+            .chars_to_show = 0,
+            .last_char_time = 0,
+            .char_delay = 0.03,
         };
     }
 
@@ -137,15 +143,42 @@ pub const CutsceneManager = struct {
     pub fn update(self: *CutsceneManager) void {
         if (!self.is_playing) return;
 
+        var cutscene = &self.cutscenes.items[self.current_cutscene_index];
+        const current_time = rl.getTime();
+
+        if (current_time - cutscene.last_char_time >= cutscene.char_delay) {
+            cutscene.last_char_time = current_time;
+
+            var total_chars: usize = 0;
+            for (cutscene.dialogue_lines.items) |line| {
+                total_chars += line.len;
+            }
+
+            if (cutscene.chars_to_show < total_chars) {
+                cutscene.chars_to_show += 1;
+            }
+        }
+
         if (rl.isKeyPressed(.space)) {
-            self.current_cutscene_index += 1;
-            if (self.current_cutscene_index >= self.cutscenes.items.len) {
-                self.is_playing = false;
-                self.current_cutscene_index = 0;
+            var total_chars: usize = 0;
+            for (cutscene.dialogue_lines.items) |line| {
+                total_chars += line.len;
+            }
+
+            if (cutscene.chars_to_show < total_chars) {
+                cutscene.chars_to_show = total_chars;
+            } else {
+                self.current_cutscene_index += 1;
+                if (self.current_cutscene_index < self.cutscenes.items.len) {
+                    self.cutscenes.items[self.current_cutscene_index].chars_to_show = 0;
+                    self.cutscenes.items[self.current_cutscene_index].last_char_time = current_time;
+                } else {
+                    self.is_playing = false;
+                    self.current_cutscene_index = 0;
+                }
             }
         }
     }
-
     pub fn draw(self: *CutsceneManager) !void {
         if (!self.is_playing) return;
         if (self.current_cutscene_index >= self.cutscenes.items.len) {
@@ -173,50 +206,35 @@ pub const CutsceneManager = struct {
         const box_height: f32 = screen_height * 0.34;
         const box_x: f32 = (screen_width - box_width);
         const box_y: f32 = screen_height - box_height;
-        const border_height: f32 = 24;
 
-        // Calculate number of tiles needed
         const texture_width = @as(f32, @floatFromInt(self.wood_texture.width));
+        const texture_height = @as(f32, @floatFromInt(self.wood_texture.height));
         const tiles_x = @ceil(box_width / texture_width);
+        const tiles_y = @ceil(box_height / texture_height);
 
-        var tx: f32 = 0;
-        while (tx < tiles_x) : (tx += 1) {
-            const draw_x = box_x + (tx * texture_width);
+        var ty: f32 = 0;
+        while (ty < tiles_y) : (ty += 1) {
+            var tx: f32 = 0;
+            while (tx < tiles_x) : (tx += 1) {
+                const draw_x = box_x + (tx * texture_width);
+                const draw_y = box_y + (ty * texture_height);
 
-            // Calculate the width of this tile (might be smaller at the edge)
-            const tile_width = @min(texture_width, box_width - (tx * texture_width));
+                const tile_width = @min(texture_width, box_width - (tx * texture_width));
+                const tile_height = @min(texture_height, box_height - (ty * texture_height));
 
-            // Calculate source rectangle (full texture height, but possibly partial width)
-            const source_rect = rl.Rectangle{
-                .x = 0,
-                .y = 0,
-                .width = tile_width,
-                .height = border_height,
-            };
-
-            // Calculate destination rectangle
-            const dest_rect = rl.Rectangle{
-                .x = draw_x,
-                .y = box_y,
-                .width = tile_width,
-                .height = border_height,
-            };
-
-            // Draw the wood texture tile
-            rl.drawTexturePro(
-                self.wood_texture,
-                source_rect,
-                dest_rect,
-                rl.Vector2{ .x = 0, .y = 0 },
-                0,
-                rl.Color.white,
-            );
+                rl.drawTexturePro(
+                    self.wood_texture,
+                    rl.Rectangle{ .x = 0, .y = 0, .width = tile_width, .height = tile_height },
+                    rl.Rectangle{ .x = draw_x, .y = draw_y, .width = tile_width, .height = tile_height },
+                    rl.Vector2{ .x = 0, .y = 0 },
+                    0,
+                    rl.Color.white,
+                );
+            }
         }
 
-        rl.drawRectangleRec(rl.Rectangle{ .x = box_x, .y = box_y + 10, .width = box_width, .height = box_height - 10 }, rl.Color{ .r = 199, .g = 179, .b = 161, .a = 255 });
-
         var text_start_x: f32 = box_x + 20;
-        const text_start_y: f32 = box_y + border_height + 20;
+        const text_start_y: f32 = box_y + 20;
         const text_width_limit: f32 = box_width - 40;
         var image_offset_x: f32 = 0;
 
@@ -226,7 +244,7 @@ pub const CutsceneManager = struct {
             const card_width: f32 = (box_height - 40) * scale_factor;
             const card_height: f32 = card_width / texture_aspect_ratio;
             const card_x = 0;
-            const card_y = box_y + border_height + 20 - (card_height - (box_height - 40)) / 2;
+            const card_y = box_y + 20 - (card_height - (box_height - 40)) / 2;
 
             rl.drawTexturePro(
                 texture,
@@ -267,7 +285,7 @@ pub const CutsceneManager = struct {
                     test_line[current_line.items.len] = ' ';
                     @memcpy(test_line[current_line.items.len + 1 ..][0..word.len], word);
 
-                    const width = rl.measureTextEx(font.?, test_line[0..space_needed :0], 20, 0).x;
+                    const width = rl.measureTextEx(font.?, test_line[0..space_needed :0], 32, 0).x;
 
                     if (width <= text_width_limit - image_offset_x) {
                         try current_line.append(' ');
@@ -290,9 +308,33 @@ pub const CutsceneManager = struct {
             }
 
             var current_y = text_start_y + 40;
+            var total_chars_shown: usize = 0;
+
             for (cutscene.dialogue_lines.items) |line| {
-                rl.drawTextPro(font.?, line.ptr, rl.Vector2{ .x = text_start_x, .y = current_y }, rl.Vector2{ .x = 0, .y = 0 }, 0, 32, 0, rl.Color.black);
-                current_y += 22;
+                const remaining_chars = if (cutscene.chars_to_show > total_chars_shown)
+                    @min(line.len, cutscene.chars_to_show - total_chars_shown)
+                else
+                    0;
+
+                if (remaining_chars > 0) {
+                    var visible_text = try cutscene.allocator.allocSentinel(u8, remaining_chars, 0);
+                    defer cutscene.allocator.free(visible_text[0 .. remaining_chars + 1]);
+                    @memcpy(visible_text[0..remaining_chars], line[0..remaining_chars]);
+
+                    rl.drawTextPro(
+                        font.?,
+                        visible_text.ptr,
+                        rl.Vector2{ .x = text_start_x, .y = current_y },
+                        rl.Vector2{ .x = 0, .y = 0 },
+                        0,
+                        32,
+                        0,
+                        rl.Color.white,
+                    );
+                }
+
+                total_chars_shown += line.len;
+                current_y += 32;
             }
         }
     }
