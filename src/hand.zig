@@ -15,7 +15,7 @@ pub fn inSlice(comptime T: type, haystack: std.ArrayList(T), needle: T) struct {
 pub const Hand = struct {
     cards: std.ArrayList(PlayingCard),
     current_card_index: usize = 0,
-    spacing: i32 = 80,
+    spacing: i32 = 70,
     hover_lift: f32 = -20.0,
 
     pub fn init(allocator: std.mem.Allocator) Hand {
@@ -38,7 +38,7 @@ pub const Hand = struct {
         const card_width = 100;
         const total_width = (num_cards - 1) * self.spacing + card_width;
         const start_x = @divTrunc(window_width - total_width, 2);
-        const base_y = window_height - 230; // Moved closer to bottom
+        const base_y = window_height - 200; // Moved closer to bottom
 
         var i: usize = 0;
         while (i < num_cards) : (i += 1) {

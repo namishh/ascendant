@@ -139,8 +139,8 @@ pub fn main() anyerror!void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const screenWidth = 1900;
-    const screenHeight = 960;
+    const screenWidth = 1280;
+    const screenHeight = 720;
     const flags = rl.ConfigFlags{ .msaa_4x_hint = true };
     rl.setConfigFlags(flags);
 

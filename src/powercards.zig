@@ -7,15 +7,15 @@ pub const PowerCards = struct {
     cards: std.ArrayList(PlayingCard),
     x: i32,
     y: i32,
-    slot_width: i32 = 95,
+    slot_width: i32 = 85,
     max_cards: i32 = 4,
     card_back_texture: ?rl.Texture2D = null,
 
     pub fn init(allocator: std.mem.Allocator) !PowerCards {
         return PowerCards{
             .cards = std.ArrayList(PlayingCard).init(allocator),
-            .x = 25,
-            .y = @divTrunc(rl.getScreenHeight(), 1) - 130,
+            .x = 10,
+            .y = @divTrunc(rl.getScreenHeight(), 1) - 100,
         };
     }
 
@@ -39,8 +39,8 @@ pub const PowerCards = struct {
             var new_card = card;
             new_card.x = self.x + @as(i32, @intCast(self.cards.items.len)) * self.slot_width;
             new_card.y = self.y;
-            new_card.height = 108;
-            new_card.width = 81;
+            new_card.height = 92;
+            new_card.width = 69;
 
             try self.cards.append(new_card);
         }
@@ -67,7 +67,7 @@ pub const PowerCards = struct {
     pub fn draw(self: PowerCards) void {
         for (0..@as(usize, @intCast(self.max_cards))) |i| {
             const x = self.x + @as(i32, @intCast(i)) * self.slot_width;
-            rl.drawRectangleLines(x - 2, self.y - 2, 85, 112, rl.Color.gray);
+            rl.drawRectangleLines(x - 2, self.y - 2, 73, 96, rl.Color.gray);
         }
 
         for (self.cards.items) |card| {

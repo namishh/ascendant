@@ -133,16 +133,18 @@ pub const Deck = struct {
         var i: usize = 0;
         while (i < visible_cards) : (i += 1) {
             const card_y = self.y - @as(i32, @intCast(i)) + 10 * offset;
-            var display_card = PlayingCard.init("", "", rl.getScreenWidth() - self.x, card_y - @as(i32, @intCast(i)) * 5);
+            var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, rl.getScreenWidth() - self.x, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0;
             display_card.draw();
         }
 
         i = 0;
         while (i < visible_cards) : (i += 1) {
-            const card_y = self.y - @as(i32, @intCast(i)) + 10 * offset;
-            var display_card = PlayingCard.init("", "", self.x, card_y - @as(i32, @intCast(i)) * 5);
+            const card_y = self.y - @as(i32, @intCast(i)) + 5 * offset;
+            var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, self.x - 50, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0;
+            display_card.height = 92;
+            display_card.width = 69;
             display_card.is_power_card = true;
             display_card.draw();
         }

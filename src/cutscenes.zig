@@ -203,7 +203,7 @@ pub const CutsceneManager = struct {
         rl.endShaderMode();
 
         const box_width: f32 = screen_width * 1;
-        const box_height: f32 = screen_height * 0.34;
+        const box_height: f32 = screen_height * 0.3;
         const box_x: f32 = (screen_width - box_width);
         const box_y: f32 = screen_height - box_height;
 
@@ -240,7 +240,7 @@ pub const CutsceneManager = struct {
 
         if (cutscene.texture) |texture| {
             const texture_aspect_ratio = @as(f32, @floatFromInt(texture.width)) / @as(f32, @floatFromInt(texture.height));
-            const scale_factor: f32 = 1.25;
+            const scale_factor: f32 = 1.5;
             const card_width: f32 = (box_height - 40) * scale_factor;
             const card_height: f32 = card_width / texture_aspect_ratio;
             const card_x = 0;

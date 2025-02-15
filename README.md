@@ -4,4 +4,5 @@ current progress -
 
 <br>
 
-![img](https://i.imgur.com/P8eVg80.png)
+![img](https://i.imgur.com/VOJpzn6.png)
+![img](https://i.imgur.com/OpKS5qB.png)
