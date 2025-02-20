@@ -89,7 +89,7 @@ pub const CutsceneManager = struct {
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const wood_texture = try rl.loadTexture("assets/wood.png");
+        const wood_texture = try rl.loadTexture("assets/parchment.png");
 
         return CutsceneManager{
             .cutscenes = std.ArrayList(Cutscene).init(allocator),

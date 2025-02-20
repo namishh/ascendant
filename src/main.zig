@@ -117,8 +117,6 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.one)) _ = self.power_cards.activateCard(0);
         if (rl.isKeyPressed(.two)) _ = self.power_cards.activateCard(1);
-        if (rl.isKeyPressed(.three)) _ = self.power_cards.activateCard(2);
-        if (rl.isKeyPressed(.four)) _ = self.power_cards.activateCard(3);
 
         self.toastmanager.update();
         self.cutscenemanager.update();

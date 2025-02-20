@@ -8,7 +8,7 @@ pub const PowerCards = struct {
     x: i32,
     y: i32,
     slot_width: i32 = 85,
-    max_cards: i32 = 4,
+    max_cards: i32 = 2,
     card_back_texture: ?rl.Texture2D = null,
 
     pub fn init(allocator: std.mem.Allocator) !PowerCards {

@@ -139,7 +139,7 @@ pub const Deck = struct {
         }
 
         i = 0;
-        while (i < visible_cards) : (i += 1) {
+        while (i < 2) : (i += 1) {
             const card_y = self.y - @as(i32, @intCast(i)) + 5 * offset;
             var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, self.x - 50, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0;
