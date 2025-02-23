@@ -68,7 +68,8 @@ pub const CutsceneManager = struct {
     position_loc: c_int,
     color1_loc: c_int,
     scale_loc: c_int,
-    wood_texture: rl.Texture2D,
+    bg_texture: rl.Texture2D,
+    character_bg_texture: rl.Texture2D,
     resource_cache: TextureCache,
 
     var font: ?rl.Font = null;
@@ -89,7 +90,8 @@ pub const CutsceneManager = struct {
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const wood_texture = try rl.loadTexture("assets/parchment.png");
+        const bg_texture = try rl.loadTexture("assets/parch.png");
+        const character_bg_texture = try rl.loadTexture("assets/wood3.png");
 
         return CutsceneManager{
             .cutscenes = std.ArrayList(Cutscene).init(allocator),
@@ -102,7 +104,8 @@ pub const CutsceneManager = struct {
             .position_loc = position_loc,
             .color1_loc = color1_loc,
             .scale_loc = scale_loc,
-            .wood_texture = wood_texture,
+            .bg_texture = bg_texture,
+            .character_bg_texture = character_bg_texture,
             .resource_cache = TextureCache.init(allocator),
         };
     }
@@ -113,7 +116,8 @@ pub const CutsceneManager = struct {
             font = null;
         }
         rl.unloadShader(self.shader);
-        rl.unloadTexture(self.wood_texture);
+        rl.unloadTexture(self.bg_texture);
+        rl.unloadTexture(self.character_bg_texture);
         for (self.cutscenes.items) |*cutscene| {
             cutscene.deinit();
         }
@@ -207,8 +211,8 @@ pub const CutsceneManager = struct {
         const box_x: f32 = (screen_width - box_width);
         const box_y: f32 = screen_height - box_height;
 
-        const texture_width = @as(f32, @floatFromInt(self.wood_texture.width));
-        const texture_height = @as(f32, @floatFromInt(self.wood_texture.height));
+        const texture_width = @as(f32, @floatFromInt(self.bg_texture.width));
+        const texture_height = @as(f32, @floatFromInt(self.bg_texture.height));
         const tiles_x = @ceil(box_width / texture_width);
         const tiles_y = @ceil(box_height / texture_height);
 
@@ -223,7 +227,7 @@ pub const CutsceneManager = struct {
                 const tile_height = @min(texture_height, box_height - (ty * texture_height));
 
                 rl.drawTexturePro(
-                    self.wood_texture,
+                    self.bg_texture,
                     rl.Rectangle{ .x = 0, .y = 0, .width = tile_width, .height = tile_height },
                     rl.Rectangle{ .x = draw_x, .y = draw_y, .width = tile_width, .height = tile_height },
                     rl.Vector2{ .x = 0, .y = 0 },
@@ -233,7 +237,7 @@ pub const CutsceneManager = struct {
             }
         }
 
-        var text_start_x: f32 = box_x + 20;
+        var text_start_x: f32 = box_x + 6;
         const text_start_y: f32 = box_y + 20;
         const text_width_limit: f32 = box_width - 40;
         var image_offset_x: f32 = 0;
@@ -245,6 +249,38 @@ pub const CutsceneManager = struct {
             const card_height: f32 = card_width / texture_aspect_ratio;
             const card_x = 0;
             const card_y = box_y + 20 - (card_height - (box_height - 40)) / 2;
+
+            const bg_padding: f32 = 30;
+            const bg_box_x = box_x + bg_padding;
+            const bg_box_y = box_y + bg_padding;
+            const bg_box_width = card_width - bg_padding;
+            const bg_box_height = box_height - (bg_padding * 2);
+
+            const bg_texture_width = @as(f32, @floatFromInt(self.character_bg_texture.width));
+            const bg_texture_height = @as(f32, @floatFromInt(self.character_bg_texture.height));
+            const bg_tiles_x = @ceil(bg_box_width / bg_texture_width);
+            const bg_tiles_y = @ceil(bg_box_height / bg_texture_height);
+
+            var bty: f32 = 0;
+            while (bty < bg_tiles_y) : (bty += 1) {
+                var btx: f32 = 0;
+                while (btx < bg_tiles_x) : (btx += 1) {
+                    const bg_draw_x = bg_box_x + (btx * bg_texture_width);
+                    const bg_draw_y = bg_box_y + (bty * bg_texture_height);
+
+                    const bg_tile_width = @min(bg_texture_width, bg_box_width - (btx * bg_texture_width));
+                    const bg_tile_height = @min(bg_texture_height, bg_box_height - (bty * bg_texture_height));
+
+                    rl.drawTexturePro(
+                        self.character_bg_texture,
+                        rl.Rectangle{ .x = 0, .y = 0, .width = bg_tile_width, .height = bg_tile_height },
+                        rl.Rectangle{ .x = bg_draw_x, .y = bg_draw_y, .width = bg_tile_width, .height = bg_tile_height },
+                        rl.Vector2{ .x = 0, .y = 0 },
+                        0,
+                        rl.Color.white,
+                    );
+                }
+            }
 
             rl.drawTexturePro(
                 texture,
@@ -329,7 +365,7 @@ pub const CutsceneManager = struct {
                         0,
                         32,
                         0,
-                        rl.Color.white,
+                        rl.Color.dark_gray,
                     );
                 }
 

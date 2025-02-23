@@ -14,8 +14,8 @@ pub const PowerCards = struct {
     pub fn init(allocator: std.mem.Allocator) !PowerCards {
         return PowerCards{
             .cards = std.ArrayList(PlayingCard).init(allocator),
-            .x = 10,
-            .y = @divTrunc(rl.getScreenHeight(), 1) - 100,
+            .x = 60,
+            .y = @divTrunc(rl.getScreenHeight(), 1) - 150,
         };
     }
 

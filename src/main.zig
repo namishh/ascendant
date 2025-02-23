@@ -93,16 +93,16 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.m)) {
             var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
-            const cutscene = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "Welcome to Ascendant! I am Kaitlyn, your helper and guide throughout this mission.", rl.Color.sky_blue);
+            const cutscene = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "Welcome to Ascendant! I am Kaitlyn, your helper and guide throughout this mission.", rl.Color.dark_blue);
             try cutscenes.append(cutscene);
 
-            const cutscene1 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "The rules of this game are very simple. Fire beats Ice, Water Beats Fire and Ice beats Water. If the clans are same, the higher number wins. With each win you will get different powerups.", rl.Color.sky_blue);
+            const cutscene1 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "The rules of this game are very simple. Fire beats Ice, Water Beats Fire and Ice beats Water. If the clans are same, the higher number wins. With each win you will get different powerups.", rl.Color.dark_blue);
             try cutscenes.append(cutscene1);
 
-            const cutscene2 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "There are two ways to win the game. Either win three times with the same number with each clan. Or win three times with different number of any one clan.", rl.Color.sky_blue);
+            const cutscene2 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "There are two ways to win the game. Either win three times with the same number with each clan. Or win three times with different number of any one clan.", rl.Color.dark_blue);
             try cutscenes.append(cutscene2);
 
-            const cutscene3 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "Press space to continue...", rl.Color.sky_blue);
+            const cutscene3 = try self.cutscenemanager.createCutscene("assets/valkyrie.png", "Kaitlyn", "Press space to continue...", rl.Color.dark_blue);
             try cutscenes.append(cutscene3);
             self.cutscenemanager.sequence(cutscenes);
         }
@@ -161,10 +161,17 @@ pub fn main() anyerror!void {
     rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
     rl.setShaderValue(shdrZigzag, screenSizeLoc, &screenSize, .vec2);
 
+    // crt shader
+    const crtShader = try rl.loadShader("src/shaders/crt.vs", "src/shaders/crt.fs");
+    const crtTimeLoc = rl.getShaderLocation(crtShader, "time"); // Add this
+    defer rl.unloadShader(crtShader);
+
+    const renderTexture: rl.RenderTexture2D = try rl.loadRenderTexture(screenWidth, screenHeight);
+    defer rl.unloadRenderTexture(renderTexture);
+
     try PlayingCard.initResources();
     defer PlayingCard.deinitResources();
 
-    // Initialize game state
     var game_state = try GameState.init(allocator);
     defer game_state.deinit();
 
@@ -173,21 +180,36 @@ pub fn main() anyerror!void {
     while (!rl.windowShouldClose()) {
         time += rl.getFrameTime();
         rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
+        rl.setShaderValue(crtShader, crtTimeLoc, &time, .float);
         try game_state.update();
 
-        rl.beginDrawing();
-        defer rl.endDrawing();
-
-        rl.clearBackground(rl.Color.ray_white);
-
+        rl.beginTextureMode(renderTexture);
         {
+            rl.clearBackground(rl.Color.ray_white);
+
             rl.beginShaderMode(shdrZigzag);
-            defer rl.endShaderMode();
             rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.white);
+            rl.endShaderMode();
+
+            try game_state.draw();
         }
+        rl.endTextureMode();
 
-        try game_state.draw();
+        rl.beginDrawing();
+        {
+            rl.clearBackground(rl.Color.black);
 
-        rl.drawFPS(10, 10);
+            rl.beginShaderMode(crtShader);
+            rl.drawTextureRec(renderTexture.texture, rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(renderTexture.texture.width),
+                .height = @floatFromInt(renderTexture.texture.height),
+            }, rl.Vector2{ .x = 0, .y = 0 }, rl.Color.white);
+            rl.endShaderMode();
+
+            rl.drawFPS(10, 10);
+        }
+        rl.endDrawing();
     }
 }
