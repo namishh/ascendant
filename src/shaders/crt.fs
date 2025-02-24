@@ -1,20 +1,13 @@
 #version 330
-
 uniform sampler2D iChannel0;
 uniform float time;
-
 in vec2 uv;
-
 #define PI 3.14159265358979323846
 
 vec2 deformUv(vec2 uv) 
 {
-    // Corrected screen curvature deformation
-    float curveIntensity = 0.12;  // Reduced curvature
-    vec2 centeredUv = uv - vec2(0.5);
-    float uvDistance = length(centeredUv);
-    vec2 deformedUv = uv - centeredUv * (uvDistance * uvDistance) * curveIntensity;
-    return clamp(deformedUv, 0.0, 1.0);
+    // Removed curvature deformation, now just returns the original UV
+    return uv;
 }
 
 float edgeIntensity(vec2 uv)
@@ -61,10 +54,7 @@ void main()
     color *= edgeIntensity(correctedUv);
     color *= scanLines(deformedUv, time);
     
-    // Subtle curvature effect
-    vec2 uvCenter = correctedUv - 0.5;
-    float curvature = 1.0 - pow(length(uvCenter * 1.1), 2.0) * 0.15;
-    color *= curvature;
+    // Removed the curvature effect entirely
     
     // Final output
     gl_FragColor = vec4(pow(color, vec3(1.08)), 1.0);

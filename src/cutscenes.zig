@@ -72,6 +72,12 @@ pub const CutsceneManager = struct {
     character_bg_texture: rl.Texture2D,
     resource_cache: TextureCache,
 
+    // New shader for character glitch effect
+    character_shader: rl.Shader,
+    character_time_loc: c_int,
+    character_resolution_loc: c_int,
+    character_mouse_loc: c_int,
+
     var font: ?rl.Font = null;
 
     pub fn init(allocator: std.mem.Allocator) !CutsceneManager {
@@ -90,8 +96,14 @@ pub const CutsceneManager = struct {
         const scale: f32 = 1.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const bg_texture = try rl.loadTexture("assets/parch.png");
-        const character_bg_texture = try rl.loadTexture("assets/wood3.png");
+        // Load character glitch shader
+        const character_shader = try rl.loadShader(null, "src/shaders/glitch.fs");
+        const character_time_loc = rl.getShaderLocation(character_shader, "iTime");
+        const character_resolution_loc = rl.getShaderLocation(character_shader, "iResolution");
+        const character_mouse_loc = rl.getShaderLocation(character_shader, "iMouse");
+
+        const bg_texture = try rl.loadTexture("assets/tile.png");
+        const character_bg_texture = try rl.loadTexture("assets/tile.png");
 
         return CutsceneManager{
             .cutscenes = std.ArrayList(Cutscene).init(allocator),
@@ -107,6 +119,12 @@ pub const CutsceneManager = struct {
             .bg_texture = bg_texture,
             .character_bg_texture = character_bg_texture,
             .resource_cache = TextureCache.init(allocator),
+
+            // Initialize character shader fields
+            .character_shader = character_shader,
+            .character_time_loc = character_time_loc,
+            .character_resolution_loc = character_resolution_loc,
+            .character_mouse_loc = character_mouse_loc,
         };
     }
 
@@ -116,6 +134,7 @@ pub const CutsceneManager = struct {
             font = null;
         }
         rl.unloadShader(self.shader);
+        rl.unloadShader(self.character_shader); // Unload character shader
         rl.unloadTexture(self.bg_texture);
         rl.unloadTexture(self.character_bg_texture);
         for (self.cutscenes.items) |*cutscene| {
@@ -126,7 +145,7 @@ pub const CutsceneManager = struct {
     }
 
     pub fn preloadResources(self: *CutsceneManager) !void {
-        try self.resource_cache.preloadTexture("assets/valkyrie.png");
+        try self.resource_cache.preloadTexture("assets/test.jpg");
     }
 
     pub fn createCutscene(self: *CutsceneManager, texture_path: []const u8, character_name: []const u8, dialogue: []const u8, color: rl.Color) !Cutscene {
@@ -183,6 +202,7 @@ pub const CutsceneManager = struct {
             }
         }
     }
+
     pub fn draw(self: *CutsceneManager) !void {
         if (!self.is_playing) return;
         if (self.current_cutscene_index >= self.cutscenes.items.len) {
@@ -239,49 +259,31 @@ pub const CutsceneManager = struct {
 
         var text_start_x: f32 = box_x + 6;
         const text_start_y: f32 = box_y + 20;
-        const text_width_limit: f32 = box_width - 40;
-        var image_offset_x: f32 = 0;
+        const text_width_limit: f32 = box_width - 80;
+        var image_offset_x: f32 = 10;
 
         if (cutscene.texture) |texture| {
             const texture_aspect_ratio = @as(f32, @floatFromInt(texture.width)) / @as(f32, @floatFromInt(texture.height));
-            const scale_factor: f32 = 1.5;
-            const card_width: f32 = (box_height - 40) * scale_factor;
-            const card_height: f32 = card_width / texture_aspect_ratio;
-            const card_x = 0;
+            const scale_factor: f32 = 1;
+            const card_width: f32 = box_height * scale_factor;
+            const card_height: f32 = card_width / texture_aspect_ratio - 20;
+            const card_x = 10;
             const card_y = box_y + 20 - (card_height - (box_height - 40)) / 2;
 
-            const bg_padding: f32 = 30;
-            const bg_box_x = box_x + bg_padding;
-            const bg_box_y = box_y + bg_padding;
-            const bg_box_width = card_width - bg_padding;
-            const bg_box_height = box_height - (bg_padding * 2);
+            // Update shader parameters
+            const current_time = @as(f32, @floatCast(rl.getTime()));
+            rl.setShaderValue(self.character_shader, self.character_time_loc, &current_time, .float);
 
-            const bg_texture_width = @as(f32, @floatFromInt(self.character_bg_texture.width));
-            const bg_texture_height = @as(f32, @floatFromInt(self.character_bg_texture.height));
-            const bg_tiles_x = @ceil(bg_box_width / bg_texture_width);
-            const bg_tiles_y = @ceil(bg_box_height / bg_texture_height);
+            const resolution = rl.Vector2{ .x = card_width, .y = card_height };
+            rl.setShaderValue(self.character_shader, self.character_resolution_loc, &resolution, .vec2);
 
-            var bty: f32 = 0;
-            while (bty < bg_tiles_y) : (bty += 1) {
-                var btx: f32 = 0;
-                while (btx < bg_tiles_x) : (btx += 1) {
-                    const bg_draw_x = bg_box_x + (btx * bg_texture_width);
-                    const bg_draw_y = bg_box_y + (bty * bg_texture_height);
+            // Set glitch intensity (can be modified based on game state)
+            // Default to middle value (0.5) if not using actual mouse
+            const glitch_intensity = rl.Vector4{ .x = 0.8, .y = 0.5, .z = 0.5, .w = 0.0 };
+            rl.setShaderValue(self.character_shader, self.character_mouse_loc, &glitch_intensity, .vec4);
 
-                    const bg_tile_width = @min(bg_texture_width, bg_box_width - (btx * bg_texture_width));
-                    const bg_tile_height = @min(bg_texture_height, bg_box_height - (bty * bg_texture_height));
-
-                    rl.drawTexturePro(
-                        self.character_bg_texture,
-                        rl.Rectangle{ .x = 0, .y = 0, .width = bg_tile_width, .height = bg_tile_height },
-                        rl.Rectangle{ .x = bg_draw_x, .y = bg_draw_y, .width = bg_tile_width, .height = bg_tile_height },
-                        rl.Vector2{ .x = 0, .y = 0 },
-                        0,
-                        rl.Color.white,
-                    );
-                }
-            }
-
+            // Draw character texture with shader
+            rl.beginShaderMode(self.character_shader);
             rl.drawTexturePro(
                 texture,
                 rl.Rectangle{ .x = 0, .y = 0, .width = @as(f32, @floatFromInt(texture.width)), .height = @as(f32, @floatFromInt(texture.height)) },
@@ -290,8 +292,9 @@ pub const CutsceneManager = struct {
                 0,
                 rl.Color.white,
             );
+            rl.endShaderMode();
 
-            image_offset_x = card_width + 20;
+            image_offset_x = card_width + 40;
             text_start_x += image_offset_x;
         }
 
@@ -365,7 +368,7 @@ pub const CutsceneManager = struct {
                         0,
                         32,
                         0,
-                        rl.Color.dark_gray,
+                        rl.Color.light_gray,
                     );
                 }
 
