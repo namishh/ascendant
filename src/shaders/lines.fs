@@ -7,8 +7,8 @@ in vec4 fragColor;
 out vec4 finalColor;
 
 // Uniform inputs
-uniform vec4 colOne = vec4(0.9608, 0.9490, 0.9294, 1.0);    // First color (default: red)
-uniform vec4 colTwo = vec4(00.9294, 0.8627, 0.7451, 1.0);    // Second color (default: blue)
+uniform vec4 colOne = vec4(0.047, 0.129, 0.098, 0.95);    // First color (default: red)
+uniform vec4 colTwo = vec4(0.149, 0.050, 0.092, 0.95);    // Second color (default: blue)
 uniform float time;                                 // Time in seconds
 
 void main()

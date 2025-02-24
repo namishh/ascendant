@@ -145,8 +145,8 @@ pub fn main() anyerror!void {
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow();
 
-    const vsPath = "src/shaders/lines.vs";
-    const fsPath = "src/shaders/lines.fs";
+    const vsPath = "src/shaders/background.vs";
+    const fsPath = "src/shaders/background.fs";
     const shdrZigzag: rl.Shader = try rl.loadShader(vsPath, fsPath);
     defer rl.unloadShader(shdrZigzag);
 
