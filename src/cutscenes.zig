@@ -63,11 +63,7 @@ pub const CutsceneManager = struct {
     current_cutscene_index: usize,
     is_playing: bool,
     shader: rl.Shader,
-    resolution_loc: c_int,
-    opacity_loc: c_int,
-    position_loc: c_int,
-    color1_loc: c_int,
-    scale_loc: c_int,
+    time_loc: c_int,
     bg_texture: rl.Texture2D,
     character_bg_texture: rl.Texture2D,
     resource_cache: TextureCache,
@@ -83,19 +79,8 @@ pub const CutsceneManager = struct {
     pub fn init(allocator: std.mem.Allocator) !CutsceneManager {
         font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
-        const shader = try rl.loadShader(null, "src/shaders/overlay.fs");
-        const resolution_loc = rl.getShaderLocation(shader, "resolution");
-        const opacity_loc = rl.getShaderLocation(shader, "opacity");
-        const position_loc = rl.getShaderLocation(shader, "position");
-        const color1_loc = rl.getShaderLocation(shader, "color1");
-        const scale_loc = rl.getShaderLocation(shader, "scale");
-
-        const color1 = rl.Vector4{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 0.8 };
-        rl.setShaderValue(shader, color1_loc, &color1, .vec4);
-
-        const scale: f32 = 1.0;
-        rl.setShaderValue(shader, scale_loc, &scale, .float);
-
+        const shader = try rl.loadShader("src/shaders/lines.vs", "src/shaders/lines.fs");
+        const time_loc = rl.getShaderLocation(shader, "time");
         // Load character glitch shader
         const character_shader = try rl.loadShader(null, "src/shaders/glitch.fs");
         const character_time_loc = rl.getShaderLocation(character_shader, "iTime");
@@ -110,12 +95,8 @@ pub const CutsceneManager = struct {
             .allocator = allocator,
             .current_cutscene_index = 0,
             .is_playing = false,
+            .time_loc = time_loc,
             .shader = shader,
-            .resolution_loc = resolution_loc,
-            .opacity_loc = opacity_loc,
-            .position_loc = position_loc,
-            .color1_loc = color1_loc,
-            .scale_loc = scale_loc,
             .bg_texture = bg_texture,
             .character_bg_texture = character_bg_texture,
             .resource_cache = TextureCache.init(allocator),
@@ -214,13 +195,8 @@ pub const CutsceneManager = struct {
         const screen_height = @as(f32, @floatFromInt(rl.getScreenHeight()));
         const cutscene = &self.cutscenes.items[self.current_cutscene_index];
 
-        const overlay_resolution = rl.Vector2{ .x = screen_width, .y = screen_height };
-        const overlay_position = rl.Vector2{ .x = 0, .y = 0 };
-        const overlay_opacity: f32 = 1.0;
-
-        rl.setShaderValue(self.shader, self.resolution_loc, &overlay_resolution, .vec2);
-        rl.setShaderValue(self.shader, self.opacity_loc, &overlay_opacity, .float);
-        rl.setShaderValue(self.shader, self.position_loc, &overlay_position, .vec2);
+        const current_time2 = @as(f32, @floatCast(rl.getTime()));
+        rl.setShaderValue(self.shader, self.time_loc, &current_time2, .float);
 
         rl.beginShaderMode(self.shader);
         rl.drawRectangle(0, 0, rl.getScreenWidth(), rl.getScreenWidth(), rl.Color.white);
