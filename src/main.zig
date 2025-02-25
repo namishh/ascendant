@@ -75,7 +75,7 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.left_alt)) {
             try self.toastmanager.show(
-                "assets/ice.png", // image path
+                "assets/kaitlyn.jpg", // image path
                 "Uh oh!",
                 "error", // priority (can be null)
                 "You did a small little fucky wucky, dumb idiot!", // message
@@ -93,16 +93,16 @@ const GameState = struct {
 
         if (rl.isKeyPressed(.m)) {
             var cutscenes = std.ArrayList(Cutscene).init(self.allocator);
-            const cutscene = try self.cutscenemanager.createCutscene("assets/test.jpg", "Kaitlyn", "Welcome to Ascendant! I am Kaitlyn, your helper and guide throughout this mission.", rl.Color.dark_blue);
+            const cutscene = try self.cutscenemanager.createCutscene("assets/kaitlyn.jpg", "Kaitlyn", "Welcome to Ascendant! I am Kaitlyn, your helper and guide throughout this mission.", rl.Color.sky_blue);
             try cutscenes.append(cutscene);
 
-            const cutscene1 = try self.cutscenemanager.createCutscene("assets/test.jpg", "Kaitlyn", "The rules of this game are very simple. Fire beats Ice, Water Beats Fire and Ice beats Water. If the clans are same, the higher number wins. With each win you will get different powerups.", rl.Color.dark_blue);
+            const cutscene1 = try self.cutscenemanager.createCutscene("assets/kaitlyn.jpg", "Kaitlyn", "The rules of this game are very simple. Fire beats Ice, Water Beats Fire and Ice beats Water. If the clans are same, the higher number wins. With each win you will get different powerups.", rl.Color.sky_blue);
             try cutscenes.append(cutscene1);
 
-            const cutscene2 = try self.cutscenemanager.createCutscene("assets/test.jpg", "Kaitlyn", "There are two ways to win the game. Either win three times with the same number with each clan. Or win three times with different number of any one clan.", rl.Color.dark_blue);
+            const cutscene2 = try self.cutscenemanager.createCutscene("assets/kaitlyn.jpg", "Kaitlyn", "There are two ways to win the game. Either win three times with the same number with each clan. Or win three times with different number of any one clan.", rl.Color.sky_blue);
             try cutscenes.append(cutscene2);
 
-            const cutscene3 = try self.cutscenemanager.createCutscene("assets/test.jpg", "Kaitlyn", "Press space to continue...", rl.Color.dark_blue);
+            const cutscene3 = try self.cutscenemanager.createCutscene("assets/kaitlyn.jpg", "Kaitlyn", "Press space to continue...", rl.Color.sky_blue);
             try cutscenes.append(cutscene3);
             self.cutscenemanager.sequence(cutscenes);
         }
@@ -137,8 +137,8 @@ pub fn main() anyerror!void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const screenWidth = 1600;
-    const screenHeight = 900;
+    const screenWidth = 1280;
+    const screenHeight = 720;
     const flags = rl.ConfigFlags{ .msaa_4x_hint = true };
     rl.setConfigFlags(flags);
 

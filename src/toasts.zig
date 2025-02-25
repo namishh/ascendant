@@ -13,8 +13,8 @@ pub const Toast = struct {
     lifetime: f32 = 5.0,
     fade_speed: f32 = 0.5,
     height: f32 = 100,
-    padding: f32 = 10,
-    spacing: f32 = 20,
+    padding: f32 = 15,
+    spacing: f32 = 10,
     terminated_image_path: ?[]u8 = null,
     title_lines: std.ArrayList([:0]const u8),
     message_lines: std.ArrayList([:0]const u8),
@@ -139,7 +139,7 @@ pub const ToastManager = struct {
         const scale: f32 = 20.0;
         rl.setShaderValue(shader, scale_loc, &scale, .float);
 
-        const wood_texture = try rl.loadTexture("assets/wood3.png");
+        const wood_texture = try rl.loadTexture("assets/tile.png");
 
         return ToastManager{
             .toasts = std.ArrayList(Toast).init(allocator),
@@ -276,7 +276,7 @@ pub const ToastManager = struct {
         toast.height = content_height + (2 * toast.padding);
 
         // Calculate initial position
-        var y_pos: f32 = 40; // Initial margin from top
+        var y_pos: f32 = 20; // Initial margin from top
         for (self.toasts.items) |existing_toast| {
             y_pos += existing_toast.getHeight();
         }
@@ -328,7 +328,7 @@ pub const ToastManager = struct {
             i += 1;
         }
 
-        var current_y: f32 = 50;
+        var current_y: f32 = 20;
         for (self.toasts.items) |*toast| {
             const target_y = current_y;
             toast.y_position += (target_y - toast.y_position) * 0.1;
@@ -346,10 +346,10 @@ pub const ToastManager = struct {
         const screen_width = @as(f32, @floatFromInt(rl.getScreenWidth()));
         for (self.toasts.items) |toast| {
             const toast_width: f32 = 300;
-            const x = screen_width - toast_width - toast.padding - 40;
+            const x = screen_width - toast_width - toast.padding;
             const y = toast.y_position;
 
-            const border_padding: f32 = 6;
+            const border_padding: f32 = 0;
             const border_x = x - border_padding;
             const border_y = y - border_padding;
             const border_width = toast_width + 2 * border_padding;
@@ -403,17 +403,6 @@ pub const ToastManager = struct {
                     );
                 }
             }
-            const resolution = rl.Vector2{ .x = toast_width, .y = toast.height };
-            const position = rl.Vector2{ .x = x, .y = y };
-            const opacity = toast.opacity;
-
-            rl.setShaderValue(self.shader, self.resolution_loc, &resolution, .vec2);
-            rl.setShaderValue(self.shader, self.opacity_loc, &opacity, .float);
-            rl.setShaderValue(self.shader, self.position_loc, &position, .vec2);
-
-            rl.beginShaderMode(self.shader);
-            rl.drawRectangle(@as(i32, @intFromFloat(x)), @as(i32, @intFromFloat(y)), @as(i32, @intFromFloat(toast_width)), @as(i32, @intFromFloat(toast.height)), rl.Color.white);
-            rl.endShaderMode();
 
             var image_offset: f32 = 0;
 

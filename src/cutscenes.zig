@@ -126,7 +126,7 @@ pub const CutsceneManager = struct {
     }
 
     pub fn preloadResources(self: *CutsceneManager) !void {
-        try self.resource_cache.preloadTexture("assets/test.jpg");
+        try self.resource_cache.preloadTexture("assets/kaitlyn.jpg");
     }
 
     pub fn createCutscene(self: *CutsceneManager, texture_path: []const u8, character_name: []const u8, dialogue: []const u8, color: rl.Color) !Cutscene {
