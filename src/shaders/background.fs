@@ -1,8 +1,20 @@
 #version 330
-
-// Raylib-provided uniforms
 uniform vec2 resolution; // Screen resolution (like iResolution.xy)
 uniform float time;      // Time in seconds (like iTime)
+
+// Customizable parameters (now as uniforms instead of defines)
+uniform float SPIN_ROTATION;
+uniform float SPIN_SPEED;
+uniform vec2 OFFSET;
+uniform vec4 COLOUR_1;
+uniform vec4 COLOUR_2;
+uniform vec4 COLOUR_3;
+uniform float CONTRAST;
+uniform float LIGTHING;
+uniform float SPIN_AMOUNT;
+uniform float PIXEL_FILTER;
+uniform float SPIN_EASE;
+uniform int IS_ROTATE;
 
 // Input from vertex shader (not used here, but required for completeness)
 in vec2 fragTexCoord;
@@ -11,20 +23,7 @@ in vec4 fragColor;
 // Output
 out vec4 finalColor;
 
-// Configuration constants
-#define SPIN_ROTATION -2.0
-#define SPIN_SPEED 2.0
-#define OFFSET vec2(0.0)
-#define COLOUR_1 vec4(0.788, 0.149, 0.290, 1.0)
-#define COLOUR_2 vec4(0.250, 0.670, 0.509, 1.0)
-#define COLOUR_3 vec4(0.1, 0.1, 0.1, 1.0)
-#define CONTRAST 3.5
-#define LIGTHING 0.4
-#define SPIN_AMOUNT 0.25
-#define PIXEL_FILTER 325.0
-#define SPIN_EASE 1.0
 #define PI 3.14159265359
-#define IS_ROTATE false
 
 // Core effect function
 vec4 effect(vec2 screenSize, vec2 screen_coords) {
@@ -33,7 +32,7 @@ vec4 effect(vec2 screenSize, vec2 screen_coords) {
     float uv_len = length(uv);
     
     float speed = (SPIN_ROTATION * SPIN_EASE * 0.2);
-    if (IS_ROTATE) {
+    if (IS_ROTATE == 1) {
         speed = time * speed;
     }
     speed += 252.2;

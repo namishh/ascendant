@@ -8,6 +8,7 @@ const ToastManager = @import("toasts.zig").ToastManager;
 const Deck = @import("deck.zig").Deck;
 const PowerCards = @import("powercards.zig").PowerCards;
 const Hand = @import("hand.zig").Hand;
+const Background = @import("background.zig").Background;
 
 const GameState = struct {
     deck: Deck,
@@ -15,6 +16,7 @@ const GameState = struct {
     power_cards: PowerCards,
     cardoverlay: CardOverlay,
     toastmanager: ToastManager,
+    background: Background,
     cutscenemanager: CutsceneManager,
     allocator: std.mem.Allocator,
 
@@ -33,8 +35,11 @@ const GameState = struct {
         var cutscenemanager = try CutsceneManager.init(allocator);
         try cutscenemanager.preloadResources();
 
+        const background = try Background.init(rl.getScreenWidth(), rl.getScreenHeight());
+
         return GameState{
             .deck = deck,
+            .background = background,
             .hand = hand,
             .power_cards = power_cards,
             .toastmanager = toastmanager,
@@ -51,9 +56,12 @@ const GameState = struct {
         self.cardoverlay.deinit();
         self.cutscenemanager.deinit();
         self.toastmanager.deinit();
+        self.background.deinit();
     }
 
     pub fn update(self: *GameState) !void {
+        const frame_time = rl.getFrameTime();
+        try self.background.update(frame_time);
         self.hand.update();
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
 
@@ -123,6 +131,7 @@ const GameState = struct {
     }
 
     pub fn draw(self: *GameState) !void {
+        self.background.draw(rl.getScreenWidth(), rl.getScreenHeight());
         self.deck.draw();
         self.hand.draw();
         self.cardoverlay.draw();
@@ -145,25 +154,9 @@ pub fn main() anyerror!void {
     rl.initWindow(screenWidth, screenHeight, "Ascendant");
     defer rl.closeWindow();
 
-    const vsPath = "src/shaders/background.vs";
-    const fsPath = "src/shaders/background.fs";
-    const shdrZigzag: rl.Shader = try rl.loadShader(vsPath, fsPath);
-    defer rl.unloadShader(shdrZigzag);
-
-    var time: f32 = 0.0;
-    const screenSize = rl.Vector2.init(
-        @as(f32, @floatFromInt(screenWidth)),
-        @as(f32, @floatFromInt(screenHeight)),
-    );
-    const timeLoc = rl.getShaderLocation(shdrZigzag, "time");
-    const screenSizeLoc = rl.getShaderLocation(shdrZigzag, "resolution");
-
-    rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
-    rl.setShaderValue(shdrZigzag, screenSizeLoc, &screenSize, .vec2);
-
     // crt shader
     const crtShader = try rl.loadShader("src/shaders/crt.vs", "src/shaders/crt.fs");
-    const crtTimeLoc = rl.getShaderLocation(crtShader, "time"); // Add this
+    const crtTimeLoc = rl.getShaderLocation(crtShader, "time");
     defer rl.unloadShader(crtShader);
 
     const renderTexture: rl.RenderTexture2D = try rl.loadRenderTexture(screenWidth, screenHeight);
@@ -178,19 +171,13 @@ pub fn main() anyerror!void {
     rl.setTargetFPS(144);
 
     while (!rl.windowShouldClose()) {
-        time += rl.getFrameTime();
-        rl.setShaderValue(shdrZigzag, timeLoc, &time, .float);
-        rl.setShaderValue(crtShader, crtTimeLoc, &time, .float);
         try game_state.update();
+
+        rl.setShaderValue(crtShader, crtTimeLoc, &game_state.background.time, .float);
 
         rl.beginTextureMode(renderTexture);
         {
             rl.clearBackground(rl.Color.ray_white);
-
-            rl.beginShaderMode(shdrZigzag);
-            rl.drawRectangle(0, 0, screenWidth, screenHeight, rl.Color.white);
-            rl.endShaderMode();
-
             try game_state.draw();
         }
         rl.endTextureMode();
