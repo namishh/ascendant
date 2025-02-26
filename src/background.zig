@@ -19,6 +19,24 @@ pub const Background = struct {
     spin_ease: f32 = 1.0,
     is_rotate: bool = false,
 
+    target_spin_rotation: f32 = -2.0,
+    target_spin_speed: f32 = 2.0,
+    target_offset: rl.Vector2 = rl.Vector2{ .x = 0.0, .y = 0.0 },
+    target_color_1: rl.Color = rl.Color{ .r = 201, .g = 38, .b = 74, .a = 255 },
+    target_color_2: rl.Color = rl.Color{ .r = 64, .g = 171, .b = 130, .a = 255 },
+    target_color_3: rl.Color = rl.Color{ .r = 25, .g = 25, .b = 25, .a = 255 },
+    target_contrast: f32 = 3.5,
+    target_lighting: f32 = 0.4,
+    target_spin_amount: f32 = 0.25,
+    target_pixel_filter: f32 = 325.0,
+    target_spin_ease: f32 = 1.0,
+    target_is_rotate: bool = false,
+
+    transition_active: [11]bool = [_]bool{false} ** 11,
+    transition_times: [11]f32 = [_]f32{0.0} ** 11,
+    transition_duration: f32 = 0.5,
+
+    // Shader locations
     time_loc: c_int,
     resolution_loc: c_int,
     spin_rotation_loc: c_int,
@@ -33,6 +51,19 @@ pub const Background = struct {
     pixel_filter_loc: c_int,
     spin_ease_loc: c_int,
     is_rotate_loc: c_int,
+
+    // Property indices for transition arrays
+    const PROP_SPIN_ROTATION = 0;
+    const PROP_SPIN_SPEED = 1;
+    const PROP_OFFSET = 2;
+    const PROP_COLOR_1 = 3;
+    const PROP_COLOR_2 = 4;
+    const PROP_COLOR_3 = 5;
+    const PROP_CONTRAST = 6;
+    const PROP_LIGHTING = 7;
+    const PROP_SPIN_AMOUNT = 8;
+    const PROP_PIXEL_FILTER = 9;
+    const PROP_SPIN_EASE = 10;
 
     pub fn init(screen_width: c_int, screen_height: c_int) !Background {
         const vs_path = "src/shaders/background.vs";
@@ -77,6 +108,80 @@ pub const Background = struct {
     pub fn update(self: *Background, delta_time: f32) !void {
         self.time += delta_time;
         rl.setShaderValue(self.shader, self.time_loc, &self.time, .float);
+
+        var updated = false;
+
+        inline for (0..self.transition_active.len) |i| {
+            if (self.transition_active[i]) {
+                self.transition_times[i] += delta_time;
+
+                if (self.transition_times[i] >= self.transition_duration) {
+                    self.transition_active[i] = false;
+                    self.transition_times[i] = 0.0;
+
+                    switch (i) {
+                        PROP_SPIN_ROTATION => self.spin_rotation = self.target_spin_rotation,
+                        PROP_SPIN_SPEED => self.spin_speed = self.target_spin_speed,
+                        PROP_OFFSET => self.offset = self.target_offset,
+                        PROP_COLOR_1 => self.color_1 = self.target_color_1,
+                        PROP_COLOR_2 => self.color_2 = self.target_color_2,
+                        PROP_COLOR_3 => self.color_3 = self.target_color_3,
+                        PROP_CONTRAST => self.contrast = self.target_contrast,
+                        PROP_LIGHTING => self.lighting = self.target_lighting,
+                        PROP_SPIN_AMOUNT => self.spin_amount = self.target_spin_amount,
+                        PROP_PIXEL_FILTER => self.pixel_filter = self.target_pixel_filter,
+                        PROP_SPIN_EASE => self.spin_ease = self.target_spin_ease,
+                        else => {},
+                    }
+                } else {
+                    const t = self.transition_times[i] / self.transition_duration;
+                    const smoothT = t * t * (3.0 - 2.0 * t);
+
+                    switch (i) {
+                        PROP_SPIN_ROTATION => {
+                            self.spin_rotation = self.lerp(self.spin_rotation, self.target_spin_rotation, smoothT);
+                        },
+                        PROP_SPIN_SPEED => {
+                            self.spin_speed = self.lerp(self.spin_speed, self.target_spin_speed, smoothT);
+                        },
+                        PROP_OFFSET => {
+                            self.offset.x = self.lerp(self.offset.x, self.target_offset.x, smoothT);
+                            self.offset.y = self.lerp(self.offset.y, self.target_offset.y, smoothT);
+                        },
+                        PROP_COLOR_1 => {
+                            self.color_1 = self.lerpColor(self.color_1, self.target_color_1, smoothT);
+                        },
+                        PROP_COLOR_2 => {
+                            self.color_2 = self.lerpColor(self.color_2, self.target_color_2, smoothT);
+                        },
+                        PROP_COLOR_3 => {
+                            self.color_3 = self.lerpColor(self.color_3, self.target_color_3, smoothT);
+                        },
+                        PROP_CONTRAST => {
+                            self.contrast = self.lerp(self.contrast, self.target_contrast, smoothT);
+                        },
+                        PROP_LIGHTING => {
+                            self.lighting = self.lerp(self.lighting, self.target_lighting, smoothT);
+                        },
+                        PROP_SPIN_AMOUNT => {
+                            self.spin_amount = self.lerp(self.spin_amount, self.target_spin_amount, smoothT);
+                        },
+                        PROP_PIXEL_FILTER => {
+                            self.pixel_filter = self.lerp(self.pixel_filter, self.target_pixel_filter, smoothT);
+                        },
+                        PROP_SPIN_EASE => {
+                            self.spin_ease = self.lerp(self.spin_ease, self.target_spin_ease, smoothT);
+                        },
+                        else => {},
+                    }
+                }
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            try self.updateAllUniforms();
+        }
     }
 
     pub fn draw(self: *Background, screen_width: c_int, screen_height: c_int) void {
@@ -85,7 +190,100 @@ pub const Background = struct {
         rl.endShaderMode();
     }
 
-    // Helper function to convert Color to vec4
+    fn lerp(self: *Background, start: f32, end: f32, t: f32) f32 {
+        _ = self;
+        return start + t * (end - start);
+    }
+
+    fn lerpColor(self: *Background, start: rl.Color, end: rl.Color, t: f32) rl.Color {
+        _ = self;
+        return rl.Color{
+            .r = @intFromFloat(@as(f32, @floatFromInt(start.r)) + t * @as(f32, @floatFromInt(end.r - start.r))),
+            .g = @intFromFloat(@as(f32, @floatFromInt(start.g)) + t * @as(f32, @floatFromInt(end.g - start.g))),
+            .b = @intFromFloat(@as(f32, @floatFromInt(start.b)) + t * @as(f32, @floatFromInt(end.b - start.b))),
+            .a = 255,
+        };
+    }
+
+    const ColorComponent = enum {
+        red,
+        green,
+        blue,
+    };
+
+    const ColorTarget = enum {
+        all,
+        color_1,
+        color_2,
+        color_3,
+    };
+
+    fn safeIncrement(value: u8, increment: u8) u8 {
+        const max: u16 = 255;
+        const result: u16 = @as(u16, value) + @as(u16, increment);
+        return if (result > max) @intCast(max) else @intCast(result);
+    }
+
+    pub fn increaseColorComponent(self: *Background, component: ColorComponent, target: ColorTarget, increment: u8) !void {
+        self.target_color_1 = self.color_1;
+        self.target_color_2 = self.color_2;
+        self.target_color_3 = self.color_3;
+
+        switch (component) {
+            .red => {
+                if (target == .all or target == .color_1) {
+                    self.target_color_1.r = safeIncrement(self.target_color_1.r, increment);
+                    self.transition_active[PROP_COLOR_1] = true;
+                    self.transition_times[PROP_COLOR_1] = 0.0;
+                }
+                if (target == .all or target == .color_2) {
+                    self.target_color_2.r = safeIncrement(self.target_color_2.r, increment);
+                    self.transition_active[PROP_COLOR_2] = true;
+                    self.transition_times[PROP_COLOR_2] = 0.0;
+                }
+                if (target == .all or target == .color_3) {
+                    self.target_color_3.r = safeIncrement(self.target_color_3.r, increment);
+                    self.transition_active[PROP_COLOR_3] = true;
+                    self.transition_times[PROP_COLOR_3] = 0.0;
+                }
+            },
+            .green => {
+                if (target == .all or target == .color_1) {
+                    self.target_color_1.g = safeIncrement(self.target_color_1.g, increment);
+                    self.transition_active[PROP_COLOR_1] = true;
+                    self.transition_times[PROP_COLOR_1] = 0.0;
+                }
+                if (target == .all or target == .color_2) {
+                    self.target_color_2.g = safeIncrement(self.target_color_2.g, increment);
+                    self.transition_active[PROP_COLOR_2] = true;
+                    self.transition_times[PROP_COLOR_2] = 0.0;
+                }
+                if (target == .all or target == .color_3) {
+                    self.target_color_3.g = safeIncrement(self.target_color_3.g, increment);
+                    self.transition_active[PROP_COLOR_3] = true;
+                    self.transition_times[PROP_COLOR_3] = 0.0;
+                }
+            },
+            .blue => {
+                if (target == .all or target == .color_1) {
+                    self.target_color_1.b = safeIncrement(self.target_color_1.b, increment);
+                    self.transition_active[PROP_COLOR_1] = true;
+                    self.transition_times[PROP_COLOR_1] = 0.0;
+                }
+                if (target == .all or target == .color_2) {
+                    self.target_color_2.b = safeIncrement(self.target_color_2.b, increment);
+                    self.transition_active[PROP_COLOR_2] = true;
+                    self.transition_times[PROP_COLOR_2] = 0.0;
+                }
+                if (target == .all or target == .color_3) {
+                    self.target_color_3.b = safeIncrement(self.target_color_3.b, increment);
+                    self.transition_active[PROP_COLOR_3] = true;
+                    self.transition_times[PROP_COLOR_3] = 0.0;
+                }
+            },
+        }
+    }
+
     fn colorToVec4(color: rl.Color) [4]f32 {
         return [_]f32{
             @as(f32, @floatFromInt(color.r)) / 255.0,
@@ -94,6 +292,7 @@ pub const Background = struct {
             @as(f32, @floatFromInt(color.a)) / 255.0,
         };
     }
+
     fn boolToInt(b: bool) c_int {
         return if (b) 1 else 0;
     }
@@ -123,62 +322,71 @@ pub const Background = struct {
         rl.setShaderValue(self.shader, self.is_rotate_loc, &rotate_int, .int);
     }
 
+    // All setter functions now use transitions
     pub fn setSpinRotation(self: *Background, value: f32) !void {
-        self.spin_rotation = value;
-        rl.setShaderValue(self.shader, self.spin_rotation_loc, &self.spin_rotation, .float);
+        self.target_spin_rotation = value;
+        self.transition_active[PROP_SPIN_ROTATION] = true;
+        self.transition_times[PROP_SPIN_ROTATION] = 0.0;
     }
 
     pub fn setSpinSpeed(self: *Background, value: f32) !void {
-        self.spin_speed = value;
-        rl.setShaderValue(self.shader, self.spin_speed_loc, &self.spin_speed, .float);
+        self.target_spin_speed = value;
+        self.transition_active[PROP_SPIN_SPEED] = true;
+        self.transition_times[PROP_SPIN_SPEED] = 0.0;
     }
 
     pub fn setOffset(self: *Background, x: f32, y: f32) !void {
-        self.offset = rl.Vector2{ .x = x, .y = y };
-        rl.setShaderValue(self.shader, self.offset_loc, &self.offset, .vec2);
+        self.target_offset = rl.Vector2{ .x = x, .y = y };
+        self.transition_active[PROP_OFFSET] = true;
+        self.transition_times[PROP_OFFSET] = 0.0;
     }
 
     pub fn setColor1(self: *Background, color: rl.Color) !void {
-        self.color_1 = color;
-        var color_vec = self.colorToVec4(color);
-        rl.setShaderValue(self.shader, self.color_1_loc, &color_vec, .vec4);
+        self.target_color_1 = color;
+        self.transition_active[PROP_COLOR_1] = true;
+        self.transition_times[PROP_COLOR_1] = 0.0;
     }
 
     pub fn setColor2(self: *Background, color: rl.Color) !void {
-        self.color_2 = color;
-        var color_vec = self.colorToVec4(color);
-        rl.setShaderValue(self.shader, self.color_2_loc, &color_vec, .vec4);
+        self.target_color_2 = color;
+        self.transition_active[PROP_COLOR_2] = true;
+        self.transition_times[PROP_COLOR_2] = 0.0;
     }
 
     pub fn setColor3(self: *Background, color: rl.Color) !void {
-        self.color_3 = color;
-        var color_vec = self.colorToVec4(color);
-        rl.setShaderValue(self.shader, self.color_3_loc, &color_vec, .vec4);
+        self.target_color_3 = color;
+        self.transition_active[PROP_COLOR_3] = true;
+        self.transition_times[PROP_COLOR_3] = 0.0;
     }
 
     pub fn setContrast(self: *Background, value: f32) !void {
-        self.contrast = value;
-        rl.setShaderValue(self.shader, self.contrast_loc, &self.contrast, .float);
+        self.target_contrast = value;
+        self.transition_active[PROP_CONTRAST] = true;
+        self.transition_times[PROP_CONTRAST] = 0.0;
     }
 
     pub fn setLighting(self: *Background, value: f32) !void {
-        self.lighting = value;
-        rl.setShaderValue(self.shader, self.lighting_loc, &self.lighting, .float);
+        self.target_lighting = value;
+        self.transition_active[PROP_LIGHTING] = true;
+        self.transition_times[PROP_LIGHTING] = 0.0;
     }
 
     pub fn setSpinAmount(self: *Background, value: f32) !void {
-        self.spin_amount = value;
-        rl.setShaderValue(self.shader, self.spin_amount_loc, &self.spin_amount, .float);
+        self.target_spin_amount = value;
+        self.transition_active[PROP_SPIN_AMOUNT] = true;
+        self.transition_times[PROP_SPIN_AMOUNT] = 0.0;
     }
 
     pub fn setPixelFilter(self: *Background, value: f32) !void {
-        self.pixel_filter = value;
-        rl.setShaderValue(self.shader, self.pixel_filter_loc, &self.pixel_filter, .float);
+        self.target_pixel_filter = value;
+        self.transition_active[PROP_PIXEL_FILTER] = true;
+        self.transition_times[PROP_PIXEL_FILTER] = 0.0;
     }
 
     pub fn setSpinEase(self: *Background, value: f32) !void {
-        self.spin_ease = value;
-        rl.setShaderValue(self.shader, self.spin_ease_loc, &self.spin_ease, .float);
+        self.target_spin_ease = value;
+        self.transition_active[PROP_SPIN_EASE] = true;
+        self.transition_times[PROP_SPIN_EASE] = 0.0;
     }
 
     pub fn setIsRotate(self: *Background, value: bool) !void {

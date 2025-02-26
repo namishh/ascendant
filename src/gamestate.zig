@@ -73,15 +73,6 @@ pub const GameState = struct {
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
         self.crtshader.update(frame_time);
 
-        if (rl.isKeyPressed(.up)) {
-            const new_speed = self.crtshader.current_speed + 0.1;
-            self.crtshader.setSpeed(new_speed);
-        }
-        if (rl.isKeyPressed(.down)) {
-            const new_speed = @abs(@max(0.05, self.crtshader.current_speed - 0.1));
-            self.crtshader.setSpeed(new_speed);
-        }
-
         if (rl.isKeyPressed(.space)) {
             if (!self.cutscenemanager.is_playing) {
                 try self.deck.reset();
