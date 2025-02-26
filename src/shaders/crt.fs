@@ -1,6 +1,7 @@
 #version 330
 uniform sampler2D iChannel0;
 uniform float time;
+uniform float scanSpeed = 0.35; // Default value that can be modified
 in vec2 uv;
 #define PI 3.14159265358979323846
 
@@ -25,7 +26,7 @@ float scanLines(vec2 uv, float time)
 {
     // More transparent scanning lines
     float lineCount = 620.0;
-    float speed = 0.35;
+    float speed = scanSpeed; // Use the tweakable uniform
     float intensity = 0.22;  // Reduced intensity
     
     float phase = (uv.y * lineCount - time * speed);

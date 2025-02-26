@@ -9,6 +9,7 @@ const Deck = @import("deck.zig").Deck;
 const PowerCards = @import("powercards.zig").PowerCards;
 const Hand = @import("hand.zig").Hand;
 const Background = @import("background.zig").Background;
+const CRTShader = @import("crtshader.zig").CRTShader;
 
 pub const GameState = struct {
     deck: Deck,
@@ -18,6 +19,7 @@ pub const GameState = struct {
     toastmanager: ToastManager,
     background: Background,
     cutscenemanager: CutsceneManager,
+    crtshader: CRTShader,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !GameState {
@@ -37,6 +39,7 @@ pub const GameState = struct {
         try cutscenemanager.preloadResources();
 
         const background = try Background.init(rl.getScreenWidth(), rl.getScreenHeight());
+        const crtshader = try CRTShader.init(rl.getScreenWidth(), rl.getScreenHeight());
 
         return GameState{
             .deck = deck,
@@ -47,6 +50,7 @@ pub const GameState = struct {
             .allocator = allocator,
             .cutscenemanager = cutscenemanager,
             .cardoverlay = cardoverlay,
+            .crtshader = crtshader,
         };
     }
 
@@ -58,6 +62,7 @@ pub const GameState = struct {
         self.cutscenemanager.deinit();
         self.toastmanager.deinit();
         self.background.deinit();
+        self.crtshader.deinit();
         PlayingCard.deinitResources();
     }
 
@@ -66,6 +71,16 @@ pub const GameState = struct {
         try self.background.update(frame_time);
         self.hand.update();
         self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
+        self.crtshader.update(frame_time);
+
+        if (rl.isKeyPressed(.up)) {
+            const new_speed = self.crtshader.current_speed + 0.1;
+            self.crtshader.setSpeed(new_speed);
+        }
+        if (rl.isKeyPressed(.down)) {
+            const new_speed = @abs(@max(0.05, self.crtshader.current_speed - 0.1));
+            self.crtshader.setSpeed(new_speed);
+        }
 
         if (rl.isKeyPressed(.space)) {
             if (!self.cutscenemanager.is_playing) {
@@ -133,6 +148,8 @@ pub const GameState = struct {
     }
 
     pub fn draw(self: *GameState) !void {
+        self.crtshader.beginRender();
+
         self.background.draw(rl.getScreenWidth(), rl.getScreenHeight());
         self.deck.draw();
         self.hand.draw();
@@ -140,5 +157,11 @@ pub const GameState = struct {
         self.toastmanager.draw();
         self.power_cards.draw();
         try self.cutscenemanager.draw();
+
+        rl.endTextureMode();
+    }
+
+    pub fn drawFinal(self: *GameState) void {
+        self.crtshader.drawFinal();
     }
 };
