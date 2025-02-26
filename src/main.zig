@@ -1,6 +1,5 @@
 const rl = @import("raylib");
 const std = @import("std");
-const PlayingCard = @import("playingcard.zig").PlayingCard;
 const GameState = @import("gamestate.zig").GameState;
 
 pub fn main() anyerror!void {

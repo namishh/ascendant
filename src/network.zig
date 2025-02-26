@@ -6,4 +6,4 @@ const Deck = @import("deck.zig").Deck;
 const PowerCards = @import("powercards.zig").PowerCards;
 const CardOverlay = @import("cardoverlay.zig").CardOverlay;
 
-// TODO
+// TODO: UDP networking

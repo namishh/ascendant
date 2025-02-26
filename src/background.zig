@@ -34,7 +34,7 @@ pub const Background = struct {
 
     transition_active: [11]bool = [_]bool{false} ** 11,
     transition_times: [11]f32 = [_]f32{0.0} ** 11,
-    transition_duration: f32 = 0.5,
+    transition_duration: f32 = 2,
 
     // Shader locations
     time_loc: c_int,
@@ -110,6 +110,25 @@ pub const Background = struct {
         rl.setShaderValue(self.shader, self.time_loc, &self.time, .float);
 
         var updated = false;
+
+        if (rl.isKeyDown(.b)) {
+            if (rl.isKeyPressed(.up)) {
+                self.setColor2(rl.Color{ .r = 252, .g = 92, .b = 125, .a = 255 }) catch {};
+                self.setColor1(rl.Color{ .r = 106, .g = 130, .b = 251, .a = 255 }) catch {};
+            }
+            if (rl.isKeyPressed(.left)) {
+                self.setColor2(rl.Color{ .r = 15, .g = 155, .b = 15, .a = 255 }) catch {};
+                self.setColor1(rl.Color{ .r = 0, .g = 0, .b = 0, .a = 255 }) catch {};
+            }
+            if (rl.isKeyPressed(.right)) {
+                self.setColor1(rl.Color{ .r = 201, .g = 38, .b = 74, .a = 255 }) catch {};
+                self.setColor2(rl.Color{ .r = 64, .g = 171, .b = 130, .a = 255 }) catch {};
+            }
+            if (rl.isKeyPressed(.down)) {
+                self.setColor2(rl.Color{ .r = 247, .g = 255, .b = 0, .a = 255 }) catch {};
+                self.setColor1(rl.Color{ .r = 219, .g = 54, .b = 164, .a = 255 }) catch {};
+            }
+        }
 
         inline for (0..self.transition_active.len) |i| {
             if (self.transition_active[i]) {
@@ -198,9 +217,9 @@ pub const Background = struct {
     fn lerpColor(self: *Background, start: rl.Color, end: rl.Color, t: f32) rl.Color {
         _ = self;
         return rl.Color{
-            .r = @intFromFloat(@as(f32, @floatFromInt(start.r)) + t * @as(f32, @floatFromInt(end.r - start.r))),
-            .g = @intFromFloat(@as(f32, @floatFromInt(start.g)) + t * @as(f32, @floatFromInt(end.g - start.g))),
-            .b = @intFromFloat(@as(f32, @floatFromInt(start.b)) + t * @as(f32, @floatFromInt(end.b - start.b))),
+            .r = @as(u8, @intFromFloat(@max(0.0, @min(255.0, @as(f32, @floatFromInt(start.r)) + t * @as(f32, @floatFromInt(@as(i16, end.r) - @as(i16, start.r))))))),
+            .g = @as(u8, @intFromFloat(@max(0.0, @min(255.0, @as(f32, @floatFromInt(start.g)) + t * @as(f32, @floatFromInt(@as(i16, end.g) - @as(i16, start.g))))))),
+            .b = @as(u8, @intFromFloat(@max(0.0, @min(255.0, @as(f32, @floatFromInt(start.b)) + t * @as(f32, @floatFromInt(@as(i16, end.b) - @as(i16, start.b))))))),
             .a = 255,
         };
     }
@@ -219,9 +238,11 @@ pub const Background = struct {
     };
 
     fn safeIncrement(value: u8, increment: u8) u8 {
-        const max: u16 = 255;
-        const result: u16 = @as(u16, value) + @as(u16, increment);
-        return if (result > max) @intCast(max) else @intCast(result);
+        if (value >= 255 - increment) {
+            return 255;
+        } else {
+            return value + increment;
+        }
     }
 
     pub fn increaseColorComponent(self: *Background, component: ColorComponent, target: ColorTarget, increment: u8) !void {
