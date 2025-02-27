@@ -40,8 +40,8 @@ pub const PowerCards = struct {
             new_card.x = self.x + @as(i32, @intCast(self.cards.items.len)) * self.slot_width;
             new_card.y = self.y;
             new_card.height = 92;
+            new_card.is_power_card = true;
             new_card.width = 69;
-
             try self.cards.append(new_card);
         }
     }

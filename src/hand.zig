@@ -5,7 +5,7 @@ const Deck = @import("deck.zig").Deck;
 
 pub fn inSlice(comptime T: type, haystack: std.ArrayList(T), needle: T) struct { found: bool, position: usize } {
     for (0..haystack.items.len) |index| {
-        if (haystack.items[index] == needle) {
+        if (haystack.items[index].equals(&needle)) {
             return .{ .found = true, .position = index };
         }
     }
@@ -31,14 +31,14 @@ pub const Hand = struct {
     pub fn drawRandomHand(self: *Hand, deck: *Deck) !void {
         self.cards.clearRetainingCapacity();
         self.current_card_index = 0;
+        const num_cards = 5;
 
-        const num_cards: i32 = 6;
         const window_width = rl.getScreenWidth();
         const window_height = rl.getScreenHeight();
         const card_width = 100;
         const total_width = (num_cards - 1) * self.spacing + card_width;
         const start_x = @divTrunc(window_width - total_width, 2);
-        const base_y = window_height - 200; // Moved closer to bottom
+        const base_y = window_height - 200;
 
         var i: usize = 0;
         while (i < num_cards) : (i += 1) {

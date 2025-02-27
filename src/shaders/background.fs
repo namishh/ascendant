@@ -35,7 +35,7 @@ vec4 effect(vec2 screenSize, vec2 screen_coords) {
     if (IS_ROTATE == 1) {
         speed = time * speed;
     }
-    speed += 252.2;
+    speed += 122.2;
     float new_pixel_angle = atan(uv.y, uv.x) + speed - SPIN_EASE * 10.0 * (1.0 * SPIN_AMOUNT * uv_len + (1.0 - 2.0 * SPIN_AMOUNT));
     vec2 mid = (screenSize.xy / length(screenSize.xy)) / 2.0;
     uv = vec2((uv_len * cos(new_pixel_angle) + mid.x), (uv_len * sin(new_pixel_angle) + mid.y)) - mid;

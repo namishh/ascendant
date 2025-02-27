@@ -1,7 +1,13 @@
 const rl = @import("raylib");
 const std = @import("std");
 
-pub fn calculateCardCorners(x: f32, y: f32, theta: f32, width: f32, height: f32, padding: f32) struct { top_left: rl.Vector2, bottom_right: rl.Vector2 } {
+pub const Suit = enum(u8) {
+    fire = 0,
+    water = 1,
+    ice = 2,
+};
+
+fn calculateCardCorners(x: f32, y: f32, theta: f32, width: f32, height: f32, padding: f32) struct { top_left: rl.Vector2, bottom_right: rl.Vector2 } {
     const half_width = (width - 2 * padding) / 2;
     const half_height = (height - 2 * padding) / 2;
 
@@ -16,8 +22,8 @@ pub fn calculateCardCorners(x: f32, y: f32, theta: f32, width: f32, height: f32,
 }
 
 pub const PlayingCard = struct {
-    value: []const u8,
-    suit: []const u8,
+    value: u8, // 2-10 for numbered cards, 11=J, 12=Q, 13=K, 14=A, 15=Joker
+    suit: Suit,
     x: i32,
     y: i32,
     width: i32 = 100,
@@ -26,11 +32,9 @@ pub const PlayingCard = struct {
     current_hover: f32 = 0.0,
     target_hover: f32 = 0.0,
     hover_speed: f32 = 0.2,
-
     is_power_card: bool = false,
-
-    is_hovered: bool = false,
-    is_current: bool = false,
+    is_hovered: bool = false, // whether the card is currently hovered
+    is_current: bool = false, // whether this is the current card in play
     hover_offset: f32 = 0.0,
     flip_progress: f32 = 0.0,
     flip_target: f32 = 0.0,
@@ -46,14 +50,12 @@ pub const PlayingCard = struct {
     var card_back_power_texture: ?rl.Texture2D = null;
     var allocator: std.mem.Allocator = undefined;
 
-    fn isFaceCard(value: []const u8) bool {
-        return std.mem.eql(u8, value, "k") or
-            std.mem.eql(u8, value, "q") or
-            std.mem.eql(u8, value, "j") or std.mem.eql(u8, value, "a");
+    fn isFaceCard(value: u8) bool {
+        return value >= 11 and value <= 14;
     }
 
-    fn isJoker(value: []const u8) bool {
-        return std.mem.eql(u8, value, "J");
+    fn isJoker(value: u8) bool {
+        return value == 15;
     }
 
     pub fn initResources() !void {
@@ -70,8 +72,8 @@ pub const PlayingCard = struct {
         face_card_textures = std.StringHashMap(rl.Texture2D).init(allocator);
         joker_textures = std.StringHashMap(rl.Texture2D).init(allocator);
 
-        const joker_numbers = [_][]const u8{ "1", "2" };
-        for (joker_numbers) |num| {
+        const joker_nums = [_][]const u8{ "1", "2" };
+        for (joker_nums) |num| {
             const key = try allocator.dupe(u8, num);
             errdefer allocator.free(key);
 
@@ -83,19 +85,18 @@ pub const PlayingCard = struct {
         }
 
         const suits = [_][]const u8{ "fire", "water", "ice" };
-        for (suits) |suit| {
-            const suit_path = try std.fmt.allocPrintZ(allocator, "assets/{s}.png", .{suit});
+        for (suits) |suit_name| {
+            const suit_path = try std.fmt.allocPrintZ(allocator, "assets/{s}.png", .{suit_name});
             defer allocator.free(suit_path);
             const texture = try rl.loadTexture(suit_path.ptr);
-            try suit_textures.?.put(suit, texture);
+            try suit_textures.?.put(suit_name, texture);
 
-            const face_cards = [_][]const u8{ "k", "q", "j", "a" };
+            const face_cards = [_][]const u8{ "j", "q", "k", "a" };
             for (face_cards) |face| {
-                const ext = ".jpeg";
-                const key = try allocator.dupe(u8, try std.fmt.allocPrint(allocator, "{s}-{s}", .{ face, suit }));
+                const key = try allocator.dupe(u8, try std.fmt.allocPrint(allocator, "{s}-{s}", .{ face, suit_name }));
                 errdefer allocator.free(key);
 
-                const path = try std.fmt.allocPrintZ(allocator, "assets/{s}-{s}{s}", .{ face, suit, ext });
+                const path = try std.fmt.allocPrintZ(allocator, "assets/{s}-{s}.jpeg", .{ face, suit_name });
                 defer allocator.free(path);
 
                 const face_texture = try rl.loadTexture(path.ptr);
@@ -150,7 +151,7 @@ pub const PlayingCard = struct {
         }
     }
 
-    pub fn init(value: []const u8, suit: []const u8, x: i32, y: i32) PlayingCard {
+    pub fn init(value: u8, suit: Suit, x: i32, y: i32) PlayingCard {
         return PlayingCard{
             .value = value,
             .suit = suit,
@@ -171,7 +172,6 @@ pub const PlayingCard = struct {
 
         self.y = self.base_y + @as(i32, @intFromFloat(self.current_hover * self.hover_offset));
 
-        // Flipping animation
         const flip_speed = 0.05;
         if (self.flip_progress < self.flip_target) {
             self.flip_progress = @min(self.flip_progress + flip_speed, self.flip_target);
@@ -216,17 +216,14 @@ pub const PlayingCard = struct {
     }
 
     fn drawFront(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
-        //const border_color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = alpha };
         const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
 
         const current_width = self.width - x_offset * 2;
         const current_height = self.height;
 
-        // Calculate center point for rotation
         const center_x = @as(f32, @floatFromInt(self.x + x_offset + @divTrunc(current_width, 2)));
         const center_y = @as(f32, @floatFromInt(self.y + y_offset + @divTrunc(current_height, 2)));
 
-        // Draw outer rectangle (border) with rotation
         const outer_rect = rl.Rectangle{
             .x = center_x,
             .y = center_y,
@@ -238,7 +235,6 @@ pub const PlayingCard = struct {
             .y = @floatFromInt(@divTrunc(current_height, 2)),
         };
 
-        // Draw inner rectangle (card background) with rotation
         const inner_rect = rl.Rectangle{
             .x = center_x,
             .y = center_y,
@@ -250,229 +246,96 @@ pub const PlayingCard = struct {
             .y = @floatFromInt(@divTrunc(current_height - self.borderSpace * 2, 2)),
         };
 
-        // Draw border and card background
         rl.drawRectanglePro(outer_rect, outer_origin, self.rotation, self.borderColor);
         rl.drawRectanglePro(inner_rect, inner_origin, self.rotation, card_color);
 
         if (isJoker(self.value)) {
-            if (joker_textures.?.get(self.suit)) |texture| {
-                const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
-                const maxHeight = @as(f32, @floatFromInt(self.height - 10));
-                const imageWidth = @as(f32, @floatFromInt(texture.width));
-                const imageHeight = @as(f32, @floatFromInt(texture.height));
-
-                const scaleWidth = maxWidth / imageWidth;
-                const scaleHeight = maxHeight / imageHeight;
-                const scale = @min(scaleWidth, scaleHeight);
-
-                const source_rect = rl.Rectangle{
-                    .x = 0,
-                    .y = 0,
-                    .width = imageWidth,
-                    .height = imageHeight,
-                };
-
-                const dest_rect = rl.Rectangle{
-                    .x = center_x,
-                    .y = center_y,
-                    .width = imageWidth * scale,
-                    .height = imageHeight * scale,
-                };
-
-                const img_origin = rl.Vector2{
-                    .x = (imageWidth * scale) / 2,
-                    .y = (imageHeight * scale) / 2,
-                };
-
-                rl.drawTexturePro(
-                    texture,
-                    source_rect,
-                    dest_rect,
-                    img_origin,
-                    self.rotation,
-                    rl.Color.white,
-                );
+            const joker_key = if (self.suit == .fire) "1" else "2";
+            if (joker_textures.?.get(joker_key)) |texture| {
+                self.drawTexture(texture, center_x, center_y, self.rotation);
             }
         } else if (isFaceCard(self.value)) {
-            const lower_value = if (self.value[0] >= 'A' and self.value[0] <= 'Z')
-                @as(u8, self.value[0] + 32)
-            else
-                self.value[0];
-
-            const key = std.fmt.allocPrintZ(allocator, "{c}-{s}", .{ lower_value, self.suit }) catch |err| {
+            const face_str = switch (self.value) {
+                11 => "j",
+                12 => "q",
+                13 => "k",
+                14 => "a",
+                else => unreachable,
+            };
+            const suit_str = switch (self.suit) {
+                .fire => "fire",
+                .water => "water",
+                .ice => "ice",
+            };
+            const key = std.fmt.allocPrintZ(allocator, "{s}-{s}", .{ face_str, suit_str }) catch |err| {
                 std.log.err("Failed to allocate face card key: {}", .{err});
                 return;
             };
             defer allocator.free(key);
 
             if (face_card_textures.?.get(key)) |texture| {
-                const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
-                const maxHeight = @as(f32, @floatFromInt(self.height - 10));
-                const imageWidth = @as(f32, @floatFromInt(texture.width));
-                const imageHeight = @as(f32, @floatFromInt(texture.height));
-
-                const scaleWidth = maxWidth / imageWidth;
-                const scaleHeight = maxHeight / imageHeight;
-                const scale = @min(scaleWidth, scaleHeight);
-
-                const source_rect = rl.Rectangle{
-                    .x = 0,
-                    .y = 0,
-                    .width = imageWidth,
-                    .height = imageHeight,
-                };
-
-                const dest_rect = rl.Rectangle{
-                    .x = center_x,
-                    .y = center_y,
-                    .width = imageWidth * scale,
-                    .height = imageHeight * scale,
-                };
-
-                const img_origin = rl.Vector2{
-                    .x = (imageWidth * scale) / 2,
-                    .y = (imageHeight * scale) / 2,
-                };
-
-                rl.drawTexturePro(
-                    texture,
-                    source_rect,
-                    dest_rect,
-                    img_origin,
-                    self.rotation,
-                    rl.Color.white,
-                );
+                self.drawTexture(texture, center_x, center_y, self.rotation);
             }
         } else {
-            var color = rl.Color.sky_blue;
-            if (std.mem.eql(u8, self.suit, "fire")) {
-                color = rl.Color.orange;
-            } else if (std.mem.eql(u8, self.suit, "water")) {
-                color = rl.Color.blue;
-            }
-
-            const fontSize: f32 = 28;
-
-            // Draw value text
-            const valueWithNull = std.fmt.allocPrintZ(allocator, "{s}", .{self.value}) catch |err| {
-                std.log.err("Failed to allocate value string: {}", .{err});
-                return;
+            const value_str = switch (self.value) {
+                2...10 => std.fmt.allocPrintZ(allocator, "{}", .{self.value}) catch "2",
+                else => "2",
             };
-            defer allocator.free(valueWithNull);
+            defer allocator.free(value_str);
 
-            // Draw suit texture
-            if (suit_textures.?.get(self.suit)) |texture| {
-                const scale = 0.25;
-                const imageWidth = @as(f32, @floatFromInt(texture.width));
-                const imageHeight = @as(f32, @floatFromInt(texture.height));
+            const suit_str = switch (self.suit) {
+                .fire => "fire",
+                .water => "water",
+                .ice => "ice",
+            };
 
-                const source_rect = rl.Rectangle{
-                    .x = 0,
-                    .y = 0,
-                    .width = imageWidth,
-                    .height = imageHeight,
-                };
-
-                const dest_rect = rl.Rectangle{
-                    .x = center_x,
-                    .y = center_y,
-                    .width = imageWidth * scale,
-                    .height = imageHeight * scale,
-                };
-
-                const img_origin = rl.Vector2{
-                    .x = (imageWidth * scale) / 2,
-                    .y = (imageHeight * scale) / 2,
-                };
-
-                rl.drawTexturePro(
-                    texture,
-                    source_rect,
-                    dest_rect,
-                    img_origin,
-                    self.rotation,
-                    rl.Color.white,
-                );
+            if (suit_textures.?.get(suit_str)) |texture| {
+                self.drawTexture(texture, center_x, center_y, self.rotation);
             }
 
             const positions = calculateCardCorners(center_x, center_y, std.math.degreesToRadians(self.rotation), @as(f32, @floatFromInt(self.width)), @as(f32, @floatFromInt(self.height)), 10);
 
+            const color = switch (self.suit) {
+                .fire => rl.Color.orange,
+                .water => rl.Color.blue,
+                .ice => rl.Color.sky_blue,
+            };
+
             rl.drawTextPro(
                 font.?,
-                valueWithNull.ptr,
+                value_str.ptr,
                 positions.top_left,
                 rl.Vector2{ .x = 0, .y = 0 },
                 self.rotation,
-                fontSize,
+                28,
                 0,
                 color,
             );
 
             rl.drawTextPro(
                 font.?,
-                valueWithNull.ptr,
+                value_str.ptr,
                 positions.bottom_right,
                 rl.Vector2{ .x = 0, .y = 0 },
                 self.rotation + 180,
-                fontSize,
+                28,
                 0,
                 color,
             );
         }
     }
 
-    pub fn equals(self: *PlayingCard, other: *PlayingCard) bool {
-        return std.mem.eql(u8, self.value, other.value) and std.mem.eql(u8, self.suit, other.suit);
-    }
-
-    fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
-        const texture = if (self.is_power_card) card_back_power_texture.? else card_back_texture.?;
-        const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
-
-        const current_width = self.width - x_offset * 2;
-        const current_height = self.height;
-
-        // Calculate center point for rotation
-        const center_x = @as(f32, @floatFromInt(self.x + x_offset + @divTrunc(current_width, 2)));
-        const center_y = @as(f32, @floatFromInt(self.y + y_offset + @divTrunc(current_height, 2)));
-
-        // Draw outer rectangle (border) with rotation
-        const outer_rect = rl.Rectangle{
-            .x = center_x,
-            .y = center_y,
-            .width = @floatFromInt(current_width),
-            .height = @floatFromInt(current_height),
-        };
-        const outer_origin = rl.Vector2{
-            .x = @floatFromInt(@divTrunc(current_width, 2)),
-            .y = @floatFromInt(@divTrunc(current_height, 2)),
-        };
-
-        // Draw inner rectangle (card background) with rotation
-        const inner_rect = rl.Rectangle{
-            .x = center_x,
-            .y = center_y,
-            .width = @floatFromInt(current_width - self.borderSpace * 2),
-            .height = @floatFromInt(current_height - self.borderSpace * 2),
-        };
-        const inner_origin = rl.Vector2{
-            .x = @floatFromInt(@divTrunc(current_width - self.borderSpace * 2, 2)),
-            .y = @floatFromInt(@divTrunc(current_height - self.borderSpace * 2, 2)),
-        };
-
-        // Draw border and card background
-        rl.drawRectanglePro(outer_rect, outer_origin, self.rotation, self.borderColor);
-        rl.drawRectanglePro(inner_rect, inner_origin, self.rotation, card_color);
-
-        // Draw back texture
+    fn drawTexture(self: PlayingCard, texture: rl.Texture2D, center_x: f32, center_y: f32, rotation: f32) void {
+        const maxWidth = @as(f32, @floatFromInt(self.width - 10));
+        const maxHeight = @as(f32, @floatFromInt(self.height - 10));
         const imageWidth = @as(f32, @floatFromInt(texture.width));
         const imageHeight = @as(f32, @floatFromInt(texture.height));
-        const maxWidth = @as(f32, @floatFromInt(self.width - x_offset * 2 - 10));
-        const maxHeight = @as(f32, @floatFromInt(self.height - 10));
 
-        const scaleWidth = maxWidth / imageWidth;
-        const scaleHeight = maxHeight / imageHeight;
-        const scale = @min(scaleWidth, scaleHeight);
+        var scale = @min(maxWidth / imageWidth, maxHeight / imageHeight);
+
+        if (!self.is_power_card and self.flip_progress == 0) {
+            scale *= 0.66;
+        }
 
         const source_rect = rl.Rectangle{
             .x = 0,
@@ -498,8 +361,50 @@ pub const PlayingCard = struct {
             source_rect,
             dest_rect,
             img_origin,
-            self.rotation,
+            rotation,
             rl.Color.white,
         );
+    }
+
+    fn drawBack(self: PlayingCard, x_offset: i32, y_offset: i32, alpha: u8) void {
+        const texture = if (self.is_power_card) card_back_power_texture.? else card_back_texture.?;
+        const card_color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = alpha };
+
+        const current_width = self.width - x_offset * 2;
+        const current_height = self.height;
+
+        const center_x = @as(f32, @floatFromInt(self.x + x_offset + @divTrunc(current_width, 2)));
+        const center_y = @as(f32, @floatFromInt(self.y + y_offset + @divTrunc(current_height, 2)));
+
+        const outer_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width),
+            .height = @floatFromInt(current_height),
+        };
+        const outer_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width, 2)),
+            .y = @floatFromInt(@divTrunc(current_height, 2)),
+        };
+
+        const inner_rect = rl.Rectangle{
+            .x = center_x,
+            .y = center_y,
+            .width = @floatFromInt(current_width - self.borderSpace * 2),
+            .height = @floatFromInt(current_height - self.borderSpace * 2),
+        };
+        const inner_origin = rl.Vector2{
+            .x = @floatFromInt(@divTrunc(current_width - self.borderSpace * 2, 2)),
+            .y = @floatFromInt(@divTrunc(current_height - self.borderSpace * 2, 2)),
+        };
+
+        rl.drawRectanglePro(outer_rect, outer_origin, self.rotation, self.borderColor);
+        rl.drawRectanglePro(inner_rect, inner_origin, self.rotation, card_color);
+
+        self.drawTexture(texture, center_x, center_y, self.rotation);
+    }
+
+    pub fn equals(self: PlayingCard, other: PlayingCard) bool {
+        return self.value == other.value and self.suit == other.suit;
     }
 };

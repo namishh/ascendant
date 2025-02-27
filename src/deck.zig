@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const PlayingCard = @import("playingcard.zig").PlayingCard;
+const Suit = @import("playingcard.zig").Suit;
 
 pub const Deck = struct {
     cards: std.ArrayList(PlayingCard),
@@ -16,24 +17,23 @@ pub const Deck = struct {
         const used_cards = std.ArrayList(PlayingCard).init(allocator);
         const used_power_cards = std.ArrayList(PlayingCard).init(allocator);
 
-        const suits = [_][]const u8{ "fire", "water", "ice" };
+        const suits = [_]Suit{ .fire, .water, .ice };
 
-        const normal_values = [_][]const u8{ "2", "3", "4", "5", "6", "7", "8", "9", "10" };
         for (suits) |suit| {
-            for (normal_values) |value| {
-                try cards.append(PlayingCard.init(value, suit, 300, 150));
+            for (2..11) |value| {
+                try cards.append(PlayingCard.init(@intCast(value), suit, 300, 150));
             }
         }
 
-        const power_values = [_][]const u8{ "j", "q", "k", "a" };
         for (suits) |suit| {
-            for (power_values) |value| {
-                try power_cards.append(PlayingCard.init(value, suit, 300, 150));
-            }
+            try power_cards.append(PlayingCard.init(11, suit, 300, 150)); // J
+            try power_cards.append(PlayingCard.init(12, suit, 300, 150)); // Q
+            try power_cards.append(PlayingCard.init(13, suit, 300, 150)); // K
+            try power_cards.append(PlayingCard.init(14, suit, 300, 150)); // A
         }
 
-        try power_cards.append(PlayingCard.init("J", "1", 300, 150));
-        try power_cards.append(PlayingCard.init("J", "2", 300, 150));
+        try power_cards.append(PlayingCard.init(15, .fire, 300, 150)); // Joker 1
+        try power_cards.append(PlayingCard.init(15, .water, 300, 150)); // Joker 2
 
         return Deck{
             .cards = cards,
@@ -131,7 +131,7 @@ pub const Deck = struct {
         const offset: i32 = 2;
 
         var i: usize = 0;
-        while (i < visible_cards) : (i += 1) {
+        while (i < visible_cards and i < self.cards.items.len) : (i += 1) {
             const card_y = self.y - @as(i32, @intCast(i)) + 10 * offset;
             var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, rl.getScreenWidth() - self.x, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0;
@@ -139,9 +139,9 @@ pub const Deck = struct {
         }
 
         i = 0;
-        while (i < 2) : (i += 1) {
+        while (i < 2 and i < self.power_cards.items.len) : (i += 1) {
             const card_y = self.y - @as(i32, @intCast(i)) + 5 * offset;
-            var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, self.x - 50, card_y - @as(i32, @intCast(i)) * 5);
+            var display_card = PlayingCard.init(self.power_cards.items[i].value, self.power_cards.items[i].suit, self.x - 50, card_y - @as(i32, @intCast(i)) * 5);
             display_card.flip_progress = 1.0;
             display_card.height = 92;
             display_card.width = 69;
