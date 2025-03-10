@@ -10,11 +10,13 @@ const PowerCards = @import("powercards.zig").PowerCards;
 const Hand = @import("hand.zig").Hand;
 const Background = @import("background.zig").Background;
 const CRTShader = @import("crtshader.zig").CRTShader;
+const Bot = @import("bot.zig").Bot;
 
 pub const GameState = struct {
     deck: Deck,
-    hand: Hand,
-    power_cards: PowerCards,
+    bot: Bot,
+    player_hand: Hand,
+    player_power_cards: PowerCards,
     cardoverlay: CardOverlay,
     toastmanager: ToastManager,
     background: Background,
@@ -27,11 +29,11 @@ pub const GameState = struct {
         var deck = try Deck.init(allocator);
         deck.shuffle();
 
-        var hand = Hand.init(allocator);
-        try hand.drawRandomHand(&deck);
+        var player_hand = Hand.init(allocator);
+        try player_hand.drawRandomHand(&deck);
 
-        var power_cards = try PowerCards.init(allocator);
-        try power_cards.loadResources();
+        var player_power_cards = try PowerCards.init(allocator);
+        try player_power_cards.loadResources();
 
         const cardoverlay = CardOverlay.init();
         const toastmanager = try ToastManager.init(allocator);
@@ -41,11 +43,15 @@ pub const GameState = struct {
         const background = try Background.init(rl.getScreenWidth(), rl.getScreenHeight());
         const crtshader = try CRTShader.init(rl.getScreenWidth(), rl.getScreenHeight());
 
+        var bot = Bot.init(allocator);
+        try bot.hand.drawRandomHand(&deck);
+
         return GameState{
+            .bot = bot,
             .deck = deck,
             .background = background,
-            .hand = hand,
-            .power_cards = power_cards,
+            .player_hand = player_hand,
+            .player_power_cards = player_power_cards,
             .toastmanager = toastmanager,
             .allocator = allocator,
             .cutscenemanager = cutscenemanager,
@@ -55,9 +61,10 @@ pub const GameState = struct {
     }
 
     pub fn deinit(self: *GameState) void {
+        self.bot.deinit();
         self.deck.deinit();
-        self.hand.deinit();
-        self.power_cards.deinit();
+        self.player_hand.deinit();
+        self.player_power_cards.deinit();
         self.cardoverlay.deinit();
         self.cutscenemanager.deinit();
         self.toastmanager.deinit();
@@ -69,14 +76,14 @@ pub const GameState = struct {
     pub fn update(self: *GameState) !void {
         const frame_time = rl.getFrameTime();
         try self.background.update(frame_time);
-        self.hand.update();
-        self.cardoverlay.update(self.hand.cards.items[self.hand.current_card_index]);
+        self.player_hand.update();
+        self.cardoverlay.update(self.player_hand.cards.items[self.player_hand.current_card_index]);
         self.crtshader.update(frame_time);
 
         if (rl.isKeyPressed(.space)) {
             if (!self.cutscenemanager.is_playing) {
                 try self.deck.reset();
-                try self.hand.drawRandomHand(&self.deck);
+                try self.player_hand.drawRandomHand(&self.deck);
             }
         }
 
@@ -124,15 +131,15 @@ pub const GameState = struct {
         }
 
         if (rl.isKeyPressed(.q)) {
-            try self.power_cards.addCard(&self.deck);
+            try self.player_power_cards.addCard(&self.deck);
         }
 
         if (rl.isKeyPressed(.r)) {
-            self.power_cards.reset();
+            self.player_power_cards.reset();
         }
 
-        if (rl.isKeyPressed(.one)) _ = self.power_cards.activateCard(0);
-        if (rl.isKeyPressed(.two)) _ = self.power_cards.activateCard(1);
+        if (rl.isKeyPressed(.one)) _ = self.player_power_cards.activateCard(0);
+        if (rl.isKeyPressed(.two)) _ = self.player_power_cards.activateCard(1);
 
         self.toastmanager.update();
         self.cutscenemanager.update();
@@ -143,10 +150,10 @@ pub const GameState = struct {
 
         self.background.draw(rl.getScreenWidth(), rl.getScreenHeight());
         self.deck.draw();
-        self.hand.draw();
+        self.player_hand.draw();
         self.cardoverlay.draw();
         self.toastmanager.draw();
-        self.power_cards.draw();
+        self.player_power_cards.draw();
         try self.cutscenemanager.draw();
 
         rl.endTextureMode();
