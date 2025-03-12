@@ -14,8 +14,6 @@ pub const Deck = struct {
     pub fn init(allocator: std.mem.Allocator) !Deck {
         var cards = std.ArrayList(PlayingCard).init(allocator);
         var power_cards = std.ArrayList(PlayingCard).init(allocator);
-        const used_cards = std.ArrayList(PlayingCard).init(allocator);
-        const used_power_cards = std.ArrayList(PlayingCard).init(allocator);
 
         const suits = [_]Suit{ .fire, .water, .ice };
 
@@ -38,8 +36,8 @@ pub const Deck = struct {
         return Deck{
             .cards = cards,
             .power_cards = power_cards,
-            .used_cards = used_cards,
-            .used_power_cards = used_power_cards,
+            .used_cards = std.ArrayList(PlayingCard).init(allocator),
+            .used_power_cards = std.ArrayList(PlayingCard).init(allocator),
             .x = @divTrunc(rl.getScreenWidth(), 4) - 50,
             .y = @divTrunc(rl.getScreenHeight(), 2) - 100,
         };
