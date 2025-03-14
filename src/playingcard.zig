@@ -26,7 +26,7 @@ pub const PlayingCard = struct {
     suit: Suit,
     x: i32,
     y: i32,
-    width: i32 = 100,
+    width: i32 = 95,
     height: i32 = 125,
     base_y: i32 = 0,
     current_hover: f32 = 0.0,
@@ -65,7 +65,7 @@ pub const PlayingCard = struct {
 
         font = try rl.loadFontEx("assets/font.ttf", 108, null);
 
-        card_back_texture = try rl.loadTexture("assets/card-back.jpeg");
+        card_back_texture = try rl.loadTexture("assets/card-back.png");
         card_back_power_texture = try rl.loadTexture("assets/power-card.jpg");
 
         suit_textures = std.StringHashMap(rl.Texture2D).init(allocator);
@@ -159,6 +159,17 @@ pub const PlayingCard = struct {
             .y = y,
             .base_y = y,
         };
+    }
+
+    pub fn setX(self: *PlayingCard, x: i32) void {
+        self.x = x;
+    }
+    pub fn setY(self: *PlayingCard, y: i32) void {
+        self.y = y;
+    }
+
+    pub fn setRotation(self: *PlayingCard, rotation: f32) void {
+        self.rotation = rotation;
     }
 
     pub fn update(self: *PlayingCard) void {

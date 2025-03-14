@@ -20,7 +20,7 @@ pub const Bot = struct {
 
     pub fn init(allocator: std.mem.Allocator, deck: *Deck) !Bot {
         var hand = Hand.init(allocator);
-        try hand.drawRandomHand(deck);
+        try hand.drawRandomHand(deck, false);
 
         const recent_played_cards = std.ArrayList(PlayingCard).init(allocator);
 
@@ -29,6 +29,33 @@ pub const Bot = struct {
             .recent_played_cards = recent_played_cards,
             .deck = deck,
         };
+    }
+
+    pub fn draw(self: *Bot) void {
+        self.hand.draw();
+    }
+
+    pub fn playMove(self: *Bot, new_card: ?PlayingCard) !PlayingCard {
+        // just play the first card in the hand (for now) and add the new card to the hand
+        const played_card = self.hand.cards.items[0];
+        if (new_card != null and self.hand.cards.items.len > 0) {
+            _ = self.hand.cards.orderedRemove(self.hand.current_card_index);
+        }
+
+        if (new_card) |n| {
+            try self.hand.cards.append(n);
+        } else {
+            try self.deck.reset();
+            if (try self.deck.drawCard()) |card| {
+                try self.hand.cards.append(card);
+            } else {
+                rl.traceLog(.err, "Failed to draw a new card from the deck - deck is completely empty", .{});
+            }
+        }
+
+        self.hand.updatePositions(false);
+
+        return played_card;
     }
 
     pub fn deinit(self: *Bot) void {
@@ -47,7 +74,7 @@ pub const Player = struct {
 
     pub fn init(allocator: std.mem.Allocator, deck: *Deck) !Player {
         var hand = Hand.init(allocator);
-        try hand.drawRandomHand(deck);
+        try hand.drawRandomHand(deck, true);
 
         var power_cards = try PowerCards.init(allocator);
         try power_cards.loadResources();
@@ -75,7 +102,8 @@ pub const Player = struct {
         // draw player HUD
 
     }
-    pub fn playMove(self: *Player, new_card: ?PlayingCard) !void {
+    pub fn playMove(self: *Player, new_card: ?PlayingCard) !PlayingCard {
+        const played_card = self.hand.cards.items[self.hand.current_card_index];
         if (new_card != null and self.hand.cards.items.len > 0) {
             _ = self.hand.cards.orderedRemove(self.hand.current_card_index);
         }
@@ -91,13 +119,15 @@ pub const Player = struct {
             }
         }
 
-        self.hand.updatePositions();
+        self.hand.updatePositions(true);
 
         if (self.hand.cards.items.len > 0) {
             self.hand.current_card_index = @min(self.hand.current_card_index, self.hand.cards.items.len - 1);
         } else {
             self.hand.current_card_index = 0;
         }
+
+        return played_card;
     }
 
     pub fn update(self: *Player) void {
@@ -109,6 +139,8 @@ pub const GameState = struct {
     deck: Deck,
     bot: Bot,
     player: Player,
+    player_played_card: ?PlayingCard = null,
+    bot_played_card: ?PlayingCard = null,
     cardoverlay: CardOverlay,
     toastmanager: ToastManager,
     background: Background,
@@ -157,6 +189,11 @@ pub const GameState = struct {
         PlayingCard.deinitResources();
     }
 
+    pub fn resetForNextRound(self: *GameState) void {
+        self.player_played_card = null;
+        self.bot_played_card = null;
+    }
+
     pub fn update(self: *GameState) !void {
         const frame_time = rl.getFrameTime();
         try self.background.update(frame_time);
@@ -166,13 +203,19 @@ pub const GameState = struct {
 
         if (rl.isKeyPressed(.four)) {
             try self.deck.reset();
-            try self.player.hand.drawRandomHand(&self.deck);
+            try self.player.hand.drawRandomHand(&self.deck, true);
         }
 
         if (rl.isKeyPressed(.space)) {
             if (!self.cutscenemanager.is_playing) {
                 const card = try self.deck.drawCard();
-                try self.player.playMove(card);
+                const play = try self.player.playMove(card);
+
+                const card_for_bot = try self.deck.drawCard();
+                const bot_play = try self.bot.playMove(card_for_bot);
+
+                self.player_played_card = play;
+                self.bot_played_card = bot_play;
             }
         }
 
@@ -240,9 +283,27 @@ pub const GameState = struct {
         self.background.draw(rl.getScreenWidth(), rl.getScreenHeight());
         self.deck.draw();
         self.player.draw();
+        self.bot.draw();
         self.cardoverlay.draw();
         self.toastmanager.draw();
         try self.cutscenemanager.draw();
+
+        if (self.player_played_card) |card| {
+            var mutable_card = card;
+            mutable_card.setX(@divTrunc(rl.getScreenWidth(), 2) - 100);
+            mutable_card.setY(@divTrunc(rl.getScreenHeight(), 2) - 100);
+            mutable_card.setRotation(0);
+            mutable_card.draw();
+        }
+
+        if (self.bot_played_card) |card| {
+            var mutable_card = card;
+            mutable_card.flip_progress = 0.0;
+            mutable_card.setX(@divTrunc(rl.getScreenWidth(), 2));
+            mutable_card.setY(@divTrunc(rl.getScreenHeight(), 2) - 100);
+            mutable_card.setRotation(0);
+            mutable_card.draw();
+        }
 
         rl.endTextureMode();
     }

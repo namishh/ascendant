@@ -19,7 +19,10 @@ pub const Hand = struct {
         self.cards.deinit();
     }
 
-    pub fn drawRandomHand(self: *Hand, deck: *Deck) !void {
+    pub fn drawRandomHand(self: *Hand, deck: *Deck, player: bool) !void {
+        if (!player) {
+            self.hover_lift = 20.0;
+        }
         self.cards.clearRetainingCapacity();
         self.current_card_index = 0;
         const num_cards = @as(i32, @intCast(5));
@@ -29,8 +32,10 @@ pub const Hand = struct {
         const card_width = 100;
         const total_width = (num_cards - 1) * self.spacing + card_width;
         const start_x = @divTrunc(window_width - total_width, 2);
-        const base_y = window_height - 200;
-
+        var base_y = window_height - 200;
+        if (!player) {
+            base_y = 40;
+        }
         var i: usize = 0;
         while (i < num_cards) : (i += 1) {
             if (try deck.drawCard()) |card| {
@@ -39,7 +44,11 @@ pub const Hand = struct {
                 const angle = -15.0 + progress * 30.0;
                 const x = start_x + @as(i32, @intCast(i)) * self.spacing;
                 const relative_x = @as(f32, @floatFromInt(x - (start_x + @divTrunc(total_width, 2))));
-                const y = base_y + @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+                var y = base_y + @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+                if (!player) {
+                    y += base_y - @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+                    new_card.flip_progress = 1.0;
+                }
                 new_card.x = x;
                 new_card.y = y;
                 new_card.base_y = y;
@@ -121,7 +130,7 @@ pub const Hand = struct {
         try self.cards.append(new_card);
     }
 
-    pub fn updatePositions(self: *Hand) void {
+    pub fn updatePositions(self: *Hand, player: bool) void {
         const num_cards = @as(i32, @intCast(self.cards.items.len));
         if (num_cards == 0) return;
 
@@ -130,14 +139,20 @@ pub const Hand = struct {
         const card_width = 100;
         const total_width = (num_cards - 1) * self.spacing + card_width;
         const start_x = @divTrunc(window_width - total_width, 2);
-        const base_y = window_height - 200;
-
+        var base_y = window_height - 200;
+        if (!player) {
+            base_y = 30;
+        }
         for (self.cards.items, 0..) |*card, i| {
             const progress = if (num_cards > 1) @as(f32, @floatFromInt(i)) / @as(f32, @floatFromInt(num_cards - 1)) else 0.5;
             const angle = -15.0 + progress * 30.0;
             const x = start_x + @as(i32, @intCast(i)) * self.spacing;
             const relative_x = @as(f32, @floatFromInt(x - (start_x + @divTrunc(total_width, 2))));
-            const y = base_y + @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+            var y = base_y + @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+            if (!player) {
+                y += base_y - @as(i32, @intFromFloat((relative_x * relative_x) / 5000.0));
+                card.flip_progress = 1.0;
+            }
             card.x = x;
             card.y = y;
             card.hover_offset = self.hover_lift;

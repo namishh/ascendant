@@ -1,4 +1,3 @@
-// crtshader.zig
 const rl = @import("raylib");
 const std = @import("std");
 
