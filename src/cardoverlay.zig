@@ -18,8 +18,8 @@ pub const CardOverlay = struct {
     }
 
     pub fn update(self: *CardOverlay, card: PlayingCard) void {
-        self.target_x = @floatFromInt(card.x + @divTrunc(card.width, 2));
-        self.target_y = @floatFromInt(card.y + @divTrunc(card.height, 2));
+        self.target_x = card.x + @as(f32, @floatFromInt(@divTrunc(card.width, 2)));
+        self.target_y = card.y + @as(f32, @floatFromInt(@divTrunc(card.height, 2)));
         self.target_rotation = card.rotation;
         self.width = card.width;
         self.height = card.height;
@@ -30,11 +30,7 @@ pub const CardOverlay = struct {
         self.y += dy * self.move_speed;
 
         var dr = self.target_rotation - self.rotation;
-        if (dr > 180) {
-            dr -= 360;
-        } else if (dr < -180) {
-            dr += 360;
-        }
+        if (dr > 180) dr -= 360 else if (dr < -180) dr += 360;
         self.rotation += dr * self.rotation_speed;
     }
 
@@ -46,7 +42,7 @@ pub const CardOverlay = struct {
         const inner_rect = rl.Rectangle{
             .x = self.x,
             .y = self.y,
-            .width = @floatFromInt(self.width - 4), // Slightly smaller than card
+            .width = @floatFromInt(self.width - 4),
             .height = @floatFromInt(self.height - 4),
         };
 

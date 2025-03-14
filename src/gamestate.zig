@@ -19,8 +19,8 @@ pub const Bot = struct {
     health: u32 = 300,
 
     pub fn init(allocator: std.mem.Allocator, deck: *Deck) !Bot {
-        var hand = Hand.init(allocator);
-        try hand.drawRandomHand(deck, false);
+        var hand = Hand.init(allocator, false);
+        try hand.drawRandomHand(deck);
 
         const recent_played_cards = std.ArrayList(PlayingCard).init(allocator);
 
@@ -36,7 +36,6 @@ pub const Bot = struct {
     }
 
     pub fn playMove(self: *Bot, new_card: ?PlayingCard) !PlayingCard {
-        // just play the first card in the hand (for now) and add the new card to the hand
         const played_card = self.hand.cards.items[0];
         try self.recent_played_cards.append(played_card);
         if (new_card != null and self.hand.cards.items.len > 0) {
@@ -44,19 +43,21 @@ pub const Bot = struct {
         }
 
         if (new_card) |n| {
-            try self.hand.cards.append(n);
+            try self.hand.addCard(n);
         } else {
             try self.deck.reset();
             if (try self.deck.drawCard()) |card| {
-                try self.hand.cards.append(card);
+                try self.hand.addCard(card);
             } else {
                 rl.traceLog(.err, "Failed to draw a new card from the deck - deck is completely empty", .{});
             }
         }
 
-        self.hand.updatePositions(false);
-
         return played_card;
+    }
+
+    pub fn update(self: *Bot) void {
+        self.hand.update();
     }
 
     pub fn deinit(self: *Bot) void {
@@ -74,8 +75,8 @@ pub const Player = struct {
     wins: u32 = 0,
 
     pub fn init(allocator: std.mem.Allocator, deck: *Deck) !Player {
-        var hand = Hand.init(allocator);
-        try hand.drawRandomHand(deck, true);
+        var hand = Hand.init(allocator, true);
+        try hand.drawRandomHand(deck);
 
         var power_cards = try PowerCards.init(allocator);
         try power_cards.loadResources();
@@ -99,10 +100,8 @@ pub const Player = struct {
     pub fn draw(self: *Player) void {
         self.hand.draw();
         self.power_cards.draw();
-
-        // draw player HUD
-
     }
+
     pub fn playMove(self: *Player, new_card: ?PlayingCard) !PlayingCard {
         const played_card = self.hand.cards.items[self.hand.current_card_index];
         try self.recent_played_cards.append(played_card);
@@ -111,17 +110,15 @@ pub const Player = struct {
         }
 
         if (new_card) |n| {
-            try self.hand.cards.append(n);
+            try self.hand.addCard(n);
         } else {
             try self.deck.reset();
             if (try self.deck.drawCard()) |card| {
-                try self.hand.cards.append(card);
+                try self.hand.addCard(card);
             } else {
                 rl.traceLog(.err, "Failed to draw a new card from the deck - deck is completely empty", .{});
             }
         }
-
-        self.hand.updatePositions(true);
 
         if (self.hand.cards.items.len > 0) {
             self.hand.current_card_index = @min(self.hand.current_card_index, self.hand.cards.items.len - 1);
@@ -196,13 +193,12 @@ pub const GameState = struct {
         self.bot_played_card = null;
     }
 
-    pub fn processCards(self: *GameState) void {
+    pub fn processCards(self: *GameState) !void {
         const player_suit = self.player_played_card.?.suit;
         const player_value = self.player_played_card.?.value;
         const bot_suit = self.bot_played_card.?.suit;
         const bot_value = self.bot_played_card.?.value;
 
-        // joker instawin
         if (player_value == 15) {
             self.bot.health -= 5;
         } else if (bot_value == 15) {
@@ -210,18 +206,40 @@ pub const GameState = struct {
         }
 
         if (player_suit == .fire and bot_suit == .ice) {
+            try self.background.setColor1(rl.Color.orange);
+            try self.background.setColor2(rl.Color.sky_blue);
             self.bot.health -= 5;
         } else if (player_suit == .ice and bot_suit == .fire) {
+            try self.background.setColor1(rl.Color.sky_blue);
+            try self.background.setColor2(rl.Color.orange);
             self.player.health -= 5;
         } else if (player_suit == .water and bot_suit == .fire) {
+            try self.background.setColor1(rl.Color.blue);
+            try self.background.setColor2(rl.Color.orange);
             self.bot.health -= 5;
         } else if (player_suit == .fire and bot_suit == .water) {
+            try self.background.setColor1(rl.Color.orange);
+            try self.background.setColor2(rl.Color.blue);
             self.player.health -= 5;
         } else if (player_suit == .ice and bot_suit == .water) {
+            try self.background.setColor1(rl.Color.sky_blue);
+            try self.background.setColor2(rl.Color.blue);
             self.bot.health -= 5;
         } else if (player_suit == .water and bot_suit == .ice) {
+            try self.background.setColor1(rl.Color.blue);
+            try self.background.setColor2(rl.Color.sky_blue);
             self.player.health -= 5;
         } else if (player_suit == bot_suit) {
+            if (player_suit == .fire) {
+                try self.background.setColor1(rl.Color.orange);
+                try self.background.setColor2(rl.Color.orange);
+            } else if (player_suit == .water) {
+                try self.background.setColor1(rl.Color.blue);
+                try self.background.setColor2(rl.Color.blue);
+            } else if (player_suit == .ice) {
+                try self.background.setColor1(rl.Color.sky_blue);
+                try self.background.setColor2(rl.Color.sky_blue);
+            }
             if (player_value > bot_value) {
                 self.bot.health -= 5;
             } else if (player_value < bot_value) {
@@ -234,12 +252,16 @@ pub const GameState = struct {
         const frame_time = rl.getFrameTime();
         try self.background.update(frame_time);
         self.player.update();
+        self.bot.update();
         self.cardoverlay.update(self.player.hand.cards.items[self.player.hand.current_card_index]);
         self.crtshader.update(frame_time);
 
+        if (self.player_played_card) |*card| card.update();
+        if (self.bot_played_card) |*card| card.update();
+
         if (rl.isKeyPressed(.four)) {
             try self.deck.reset();
-            try self.player.hand.drawRandomHand(&self.deck, true);
+            try self.player.hand.drawRandomHand(&self.deck);
         }
 
         if (rl.isKeyPressed(.space)) {
@@ -251,37 +273,35 @@ pub const GameState = struct {
                 const bot_play = try self.bot.playMove(card_for_bot);
 
                 self.player_played_card = play;
-                self.bot_played_card = bot_play;
+                if (self.player_played_card) |*p_card| {
+                    p_card.target_x = @floatFromInt(@divTrunc(rl.getScreenWidth(), 2) - 100);
+                    p_card.target_y = @floatFromInt(@divTrunc(rl.getScreenHeight(), 2) - 100);
+                    p_card.target_rotation = 0;
+                    p_card.flip_target = 0.0;
+                }
 
-                self.processCards();
+                self.bot_played_card = bot_play;
+                if (self.bot_played_card) |*b_card| {
+                    b_card.target_x = @floatFromInt(@divTrunc(rl.getScreenWidth(), 2));
+                    b_card.target_y = @floatFromInt(@divTrunc(rl.getScreenHeight(), 2) - 100);
+                    b_card.target_rotation = 0;
+                    b_card.flip_target = 0.0;
+                }
+
+                try self.processCards();
             }
         }
 
         if (rl.isKeyPressed(.left_shift)) {
-            try self.toastmanager.show(
-                null, // image path
-                "Achievement!", // title
-                "rare", // priority (can be null)
-                "SOME REALLY LONG TEXT! THIS SHOULD IDEALLY BE WRAPPED PLEASE BE WRAPPED I BEG TO YOU", // message
-            );
+            try self.toastmanager.show(null, "Achievement!", "rare", "SOME REALLY LONG TEXT! THIS SHOULD IDEALLY BE WRAPPED PLEASE BE WRAPPED I BEG TO YOU");
         }
 
         if (rl.isKeyPressed(.left_alt)) {
-            try self.toastmanager.show(
-                "assets/kaitlyn.jpg", // image path
-                "Uh oh!",
-                "error", // priority (can be null)
-                "You did a small little fucky wucky, dumb idiot!", // message
-            );
+            try self.toastmanager.show("assets/kaitlyn.jpg", "Uh oh!", "error", "You did a small little fucky wucky, dumb idiot!");
         }
 
         if (rl.isKeyPressed(.left_control)) {
-            try self.toastmanager.show(
-                "assets/water.png", // image path
-                "normal title",
-                "normal", // priority (can be null)
-                "well you are fine just continue with the game", // message
-            );
+            try self.toastmanager.show("assets/water.png", "normal title", "normal", "well you are fine just continue with the game");
         }
 
         if (rl.isKeyPressed(.m)) {
@@ -326,24 +346,9 @@ pub const GameState = struct {
         self.toastmanager.draw();
         try self.cutscenemanager.draw();
 
-        if (self.player_played_card) |card| {
-            var mutable_card = card;
-            mutable_card.setX(@divTrunc(rl.getScreenWidth(), 2) - 100);
-            mutable_card.setY(@divTrunc(rl.getScreenHeight(), 2) - 100);
-            mutable_card.setRotation(0);
-            mutable_card.draw();
-        }
+        if (self.player_played_card) |card| card.draw();
+        if (self.bot_played_card) |card| card.draw();
 
-        if (self.bot_played_card) |card| {
-            var mutable_card = card;
-            mutable_card.flip_progress = 0.0;
-            mutable_card.setX(@divTrunc(rl.getScreenWidth(), 2));
-            mutable_card.setY(@divTrunc(rl.getScreenHeight(), 2) - 100);
-            mutable_card.setRotation(0);
-            mutable_card.draw();
-        }
-
-        // draw the player and bot health
         var ph_buffer: [100]u8 = undefined;
         var bh_buffer: [100]u8 = undefined;
 

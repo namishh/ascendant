@@ -8,8 +8,8 @@ pub const Deck = struct {
     power_cards: std.ArrayList(PlayingCard),
     used_cards: std.ArrayList(PlayingCard),
     used_power_cards: std.ArrayList(PlayingCard),
-    x: i32,
-    y: i32,
+    x: f32,
+    y: f32,
 
     pub fn init(allocator: std.mem.Allocator) !Deck {
         var cards = std.ArrayList(PlayingCard).init(allocator);
@@ -19,27 +19,27 @@ pub const Deck = struct {
 
         for (suits) |suit| {
             for (2..11) |value| {
-                try cards.append(PlayingCard.init(@intCast(value), suit, 300, 150));
+                try cards.append(PlayingCard.init(@intCast(value), suit, 300.0, 150.0));
             }
         }
 
         for (suits) |suit| {
-            try power_cards.append(PlayingCard.init(11, suit, 300, 150)); // J
-            try power_cards.append(PlayingCard.init(12, suit, 300, 150)); // Q
-            try power_cards.append(PlayingCard.init(13, suit, 300, 150)); // K
-            try power_cards.append(PlayingCard.init(14, suit, 300, 150)); // A
+            try power_cards.append(PlayingCard.init(11, suit, 300.0, 150.0));
+            try power_cards.append(PlayingCard.init(12, suit, 300.0, 150.0));
+            try power_cards.append(PlayingCard.init(13, suit, 300.0, 150.0));
+            try power_cards.append(PlayingCard.init(14, suit, 300.0, 150.0));
         }
 
-        try power_cards.append(PlayingCard.init(15, .fire, 300, 150)); // Joker 1
-        try power_cards.append(PlayingCard.init(15, .water, 300, 150)); // Joker 2
+        try power_cards.append(PlayingCard.init(15, .fire, 300.0, 150.0));
+        try power_cards.append(PlayingCard.init(15, .water, 300.0, 150.0));
 
         return Deck{
             .cards = cards,
             .power_cards = power_cards,
             .used_cards = std.ArrayList(PlayingCard).init(allocator),
             .used_power_cards = std.ArrayList(PlayingCard).init(allocator),
-            .x = @divTrunc(rl.getScreenWidth(), 4) - 50,
-            .y = @divTrunc(rl.getScreenHeight(), 2) - 100,
+            .x = @floatFromInt(@divTrunc(rl.getScreenWidth(), 4) - 50),
+            .y = @floatFromInt(@divTrunc(rl.getScreenHeight(), 2) - 100),
         };
     }
 
@@ -54,6 +54,8 @@ pub const Deck = struct {
         for (self.cards.items) |*card| {
             card.x = self.x;
             card.y = self.y;
+            card.target_x = self.x;
+            card.target_y = self.y;
         }
     }
 
@@ -89,7 +91,9 @@ pub const Deck = struct {
         }
         if (self.cards.items.len == 0) return null;
 
-        const card = self.cards.pop();
+        var card = self.cards.pop();
+        card.x = @as(f32, @floatFromInt(rl.getScreenWidth())) - self.x;
+        card.y = self.y; // e.g., 260
         try self.used_cards.append(card);
         return card;
     }
@@ -101,7 +105,9 @@ pub const Deck = struct {
         }
         if (self.power_cards.items.len == 0) return null;
 
-        const card = self.power_cards.pop();
+        var card = self.power_cards.pop();
+        card.x = self.x - 50.0; // Matches draw logic, e.g., 270 - 50 = 220
+        card.y = self.y; // e.g., 260
         try self.used_power_cards.append(card);
         return card;
     }
@@ -111,13 +117,17 @@ pub const Deck = struct {
             var card = self.used_cards.pop();
             card.x = self.x;
             card.y = self.y;
+            card.target_x = self.x;
+            card.target_y = self.y;
             try self.cards.append(card);
         }
 
         while (self.used_power_cards.items.len > 0) {
             var card = self.used_power_cards.pop();
-            card.x = self.x + 300;
+            card.x = self.x + 300.0;
             card.y = self.y;
+            card.target_x = self.x + 300.0;
+            card.target_y = self.y;
             try self.power_cards.append(card);
         }
 
@@ -130,16 +140,16 @@ pub const Deck = struct {
 
         var i: usize = 0;
         while (i < visible_cards and i < self.cards.items.len) : (i += 1) {
-            const card_y = self.y - @as(i32, @intCast(i)) + 10 * offset;
-            var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, rl.getScreenWidth() - self.x, card_y - @as(i32, @intCast(i)) * 5);
+            const card_y = self.y - @as(f32, @floatFromInt(i)) + 10.0 * @as(f32, @floatFromInt(offset));
+            var display_card = PlayingCard.init(self.cards.items[i].value, self.cards.items[i].suit, @as(f32, @floatFromInt(rl.getScreenWidth())) - self.x, card_y - @as(f32, @floatFromInt(i)) * 5.0);
             display_card.flip_progress = 1.0;
             display_card.draw();
         }
 
         i = 0;
         while (i < 2 and i < self.power_cards.items.len) : (i += 1) {
-            const card_y = self.y - @as(i32, @intCast(i)) + 5 * offset;
-            var display_card = PlayingCard.init(self.power_cards.items[i].value, self.power_cards.items[i].suit, self.x - 50, card_y - @as(i32, @intCast(i)) * 5);
+            const card_y = self.y - @as(f32, @floatFromInt(i)) + 5.0 * @as(f32, @floatFromInt(offset));
+            var display_card = PlayingCard.init(self.power_cards.items[i].value, self.power_cards.items[i].suit, self.x - 50.0, card_y - @as(f32, @floatFromInt(i)) * 5.0);
             display_card.flip_progress = 1.0;
             display_card.height = 92;
             display_card.width = 69;

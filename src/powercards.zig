@@ -37,11 +37,13 @@ pub const PowerCards = struct {
 
         if (try deck.drawPowerCard()) |card| {
             var new_card = card;
-            new_card.x = self.x + @as(i32, @intCast(self.cards.items.len)) * self.slot_width;
-            new_card.y = self.y;
+            new_card.target_x = @floatFromInt(self.x + @as(i32, @intCast(self.cards.items.len)) * self.slot_width);
+            new_card.target_y = @floatFromInt(self.y);
+            new_card.x = new_card.target_x;
+            new_card.y = new_card.target_y;
             new_card.height = 92;
-            new_card.is_power_card = true;
             new_card.width = 69;
+            new_card.is_power_card = true;
             try self.cards.append(new_card);
         }
     }
@@ -59,8 +61,10 @@ pub const PowerCards = struct {
 
     fn updateCardPositions(self: *PowerCards) void {
         for (self.cards.items, 0..) |*card, i| {
-            card.x = self.x + @as(i32, @intCast(i)) * self.slot_width;
-            card.y = self.y;
+            card.target_x = @floatFromInt(self.x + @as(i32, @intCast(i)) * self.slot_width);
+            card.target_y = @floatFromInt(self.y);
+            card.x = card.target_x;
+            card.y = card.target_y;
         }
     }
 
