@@ -38,6 +38,7 @@ pub const Bot = struct {
     pub fn playMove(self: *Bot, new_card: ?PlayingCard) !PlayingCard {
         // just play the first card in the hand (for now) and add the new card to the hand
         const played_card = self.hand.cards.items[0];
+        try self.recent_played_cards.append(played_card);
         if (new_card != null and self.hand.cards.items.len > 0) {
             _ = self.hand.cards.orderedRemove(self.hand.current_card_index);
         }
@@ -104,6 +105,7 @@ pub const Player = struct {
     }
     pub fn playMove(self: *Player, new_card: ?PlayingCard) !PlayingCard {
         const played_card = self.hand.cards.items[self.hand.current_card_index];
+        try self.recent_played_cards.append(played_card);
         if (new_card != null and self.hand.cards.items.len > 0) {
             _ = self.hand.cards.orderedRemove(self.hand.current_card_index);
         }
@@ -194,6 +196,40 @@ pub const GameState = struct {
         self.bot_played_card = null;
     }
 
+    pub fn processCards(self: *GameState) void {
+        const player_suit = self.player_played_card.?.suit;
+        const player_value = self.player_played_card.?.value;
+        const bot_suit = self.bot_played_card.?.suit;
+        const bot_value = self.bot_played_card.?.value;
+
+        // joker instawin
+        if (player_value == 15) {
+            self.bot.health -= 5;
+        } else if (bot_value == 15) {
+            self.player.health -= 5;
+        }
+
+        if (player_suit == .fire and bot_suit == .ice) {
+            self.bot.health -= 5;
+        } else if (player_suit == .ice and bot_suit == .fire) {
+            self.player.health -= 5;
+        } else if (player_suit == .water and bot_suit == .fire) {
+            self.bot.health -= 5;
+        } else if (player_suit == .fire and bot_suit == .water) {
+            self.player.health -= 5;
+        } else if (player_suit == .ice and bot_suit == .water) {
+            self.bot.health -= 5;
+        } else if (player_suit == .water and bot_suit == .ice) {
+            self.player.health -= 5;
+        } else if (player_suit == bot_suit) {
+            if (player_value > bot_value) {
+                self.bot.health -= 5;
+            } else if (player_value < bot_value) {
+                self.player.health -= 5;
+            }
+        }
+    }
+
     pub fn update(self: *GameState) !void {
         const frame_time = rl.getFrameTime();
         try self.background.update(frame_time);
@@ -216,6 +252,8 @@ pub const GameState = struct {
 
                 self.player_played_card = play;
                 self.bot_played_card = bot_play;
+
+                self.processCards();
             }
         }
 
@@ -305,6 +343,15 @@ pub const GameState = struct {
             mutable_card.draw();
         }
 
+        // draw the player and bot health
+        var ph_buffer: [100]u8 = undefined;
+        var bh_buffer: [100]u8 = undefined;
+
+        const ph_text = try std.fmt.bufPrintZ(&ph_buffer, "Player Health: {d}", .{self.player.health});
+        const bh_text = try std.fmt.bufPrintZ(&bh_buffer, "Bot Health: {d}", .{self.bot.health});
+
+        rl.drawText(ph_text.ptr, 10, 10, 20, rl.Color.white);
+        rl.drawText(bh_text.ptr, 10, 40, 20, rl.Color.white);
         rl.endTextureMode();
     }
 
